@@ -4,6 +4,13 @@ export default function AdminManagement({
   users,
   onCreateUser,
 }) {
+  const inspectorCount = users.filter(
+    (user) => user.role === "Field Inspector"
+  ).length;
+  const citizenCount = users.filter(
+    (user) => user.role === "Citizen"
+  ).length;
+
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -69,6 +76,29 @@ export default function AdminManagement({
         Manage user accounts and create new
         RoadWatch accounts.
       </p>
+
+      <section className="stats admin-management-stats">
+        <div>
+          <span>Total Users</span>
+          <strong>{users.length}</strong>
+        </div>
+        <div>
+          <span>Citizens</span>
+          <strong>{citizenCount}</strong>
+        </div>
+        <div>
+          <span>Inspectors</span>
+          <strong>{inspectorCount}</strong>
+        </div>
+        <div>
+          <span>Administrators</span>
+          <strong>
+            {users.filter(
+              (user) => user.role === "Administrator"
+            ).length}
+          </strong>
+        </div>
+      </section>
 
       <section className="panel">
         <h2>Create Account</h2>
