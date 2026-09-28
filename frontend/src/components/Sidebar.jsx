@@ -6,6 +6,8 @@ export default function Sidebar({
   active,
   setActive,
   user,
+  collapsed,
+  onToggle,
 }) {
   const navigation = [
     "Dashboard",
@@ -23,9 +25,9 @@ export default function Sidebar({
 
     ...(role === "Administrator"
       ? [
-          "Administrator",
           "Inspected Reports",
           "Report Completion",
+          "Administrator Tools"
         ]
       : []),
 
@@ -33,7 +35,30 @@ export default function Sidebar({
   ];
 
   return (
-    <aside className="sidebar">
+    <aside
+      className={
+        collapsed
+          ? "sidebar collapsed"
+          : "sidebar"
+      }
+    >
+      <button
+        className="sidebar-toggle"
+        onClick={onToggle}
+        aria-label={
+          collapsed
+            ? "Open sidebar"
+            : "Close sidebar"
+        }
+        title={
+          collapsed
+            ? "Open sidebar"
+            : "Close sidebar"
+        }
+      >
+        {collapsed ? "☰" : "×"}
+      </button>
+
       <div className="brand">
         <img
           src={logo}
@@ -59,6 +84,8 @@ export default function Sidebar({
                 ? "nav active"
                 : "nav"
             }
+            data-short={item.charAt(0)}
+            title={item}
             onClick={() =>
               setActive(item)
             }
@@ -82,6 +109,3 @@ export default function Sidebar({
   );
 }
 
-/* =========================================================
-   LOGIN
-========================================================= */

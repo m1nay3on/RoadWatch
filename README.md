@@ -88,6 +88,7 @@ New → Needs Information → Under Review
 - dotenv
 - Nodemon for development
 
+
 ## Prerequisites
 
 Install the following:
@@ -266,4 +267,4 @@ npm run build
 ## Additional documentation
 
 See [`docs/how-to-run.md`](docs/how-to-run.md) for the existing detailed
-local setup instructions.
+

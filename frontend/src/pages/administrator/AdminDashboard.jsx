@@ -1,16 +1,23 @@
 export default function AdminDashboard({
   reports,
-  users,
 }) {
-  const inspectors = users.filter(
-    (user) =>
-      user.role === "Field Inspector"
-  );
-
   const pending = reports.filter(
     (report) =>
       report.status === "New" ||
+      report.status === "Under Review" ||
       report.status === "Needs Information"
+  );
+  const verified = reports.filter(
+    (report) => report.status === "Verified"
+  );
+  const ongoing = reports.filter(
+    (report) => report.status === "Ongoing"
+  );
+  const closed = reports.filter(
+    (report) => report.status === "Closed"
+  );
+  const rejected = reports.filter(
+    (report) => report.status === "Rejected"
   );
 
   return (
@@ -23,29 +30,38 @@ export default function AdminDashboard({
       <h1>Administrator Dashboard</h1>
 
       <p className="subtitle">
-        Monitor users, report activity, and
-        system operations.
+        Monitor report activity and system operations.
       </p>
 
-      <section className="stats">
+      <section className="stats admin-dashboard-stats">
         <div>
           <span>Total Reports</span>
           <strong>{reports.length}</strong>
         </div>
 
         <div>
-          <span>Users</span>
-          <strong>{users.length}</strong>
-        </div>
-
-        <div>
-          <span>Inspectors</span>
-          <strong>{inspectors.length}</strong>
-        </div>
-
-        <div>
           <span>Pending</span>
           <strong>{pending.length}</strong>
+        </div>
+
+        <div>
+          <span>Verified</span>
+          <strong>{verified.length}</strong>
+        </div>
+
+        <div>
+          <span>Ongoing</span>
+          <strong>{ongoing.length}</strong>
+        </div>
+
+        <div>
+          <span>Closed</span>
+          <strong>{closed.length}</strong>
+        </div>
+
+        <div>
+          <span>Rejected</span>
+          <strong>{rejected.length}</strong>
         </div>
       </section>
 
