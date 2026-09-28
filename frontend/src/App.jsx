@@ -1,77 +1,592 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import "./App.css";
-
-const reports = [
-  ["Large pothole", "Barangay Commonwealth", "In Progress"],
-  ["Broken streetlight", "Barangay Malaya", "Verified"],
-  ["Flooded drainage", "Barangay Central", "Completed"],
-];
-
-function Sidebar({active,setActive}) {
-  return <aside className="sidebar">
-    <div className="brand">ROADWATCH<span>PUBLIC INFRASTRUCTURE MONITOR</span></div>
-    <nav>{["Dashboard","Submit Report","My Reports","Profile"].map(x =>
-      <button key={x} className={active===x ? "nav active" : "nav"} onClick={()=>setActive(x)}>{x}</button>)}</nav>
-    <div className="account"><b>Citizen Account</b><span>citizen@example.com</span></div>
-  </aside>
-}
-
-function Dashboard({setActive}) {
-  return <main className="main">
-    <h1>Good afternoon, Citizen</h1>
-    <p className="subtitle">Track infrastructure issues and follow their repair progress.</p>
-    <section className="stats">
-      <div><span>Total Reports</span><strong>12</strong></div>
-      <div><span>In Progress</span><strong>4</strong></div>
-      <div><span>Completed</span><strong>7</strong></div>
-      <button className="gold" onClick={()=>setActive("Submit Report")}>+ Submit Report</button>
-    </section>
-    <section className="panel"><h2>Recent Reports</h2>
-      {reports.map(([a,b,c])=><div className="report-row" key={a}>
-        <b>{a}</b><span>{b}</span><em>{c}</em><button onClick={()=>setActive("My Reports")}>View details →</button>
-      </div>)}
-    </section>
-  </main>
-}
-
-function SubmitReport({setActive}) {
-  return <main className="main">
-    <h1>Submit Damage Report</h1>
-    <p className="subtitle">Provide accurate details so the issue can be verified and assigned.</p>
-    <section className="form-grid">
-      <form className="panel form" onSubmit={e=>{e.preventDefault();setActive("My Reports")}}>
-        <label>Category<select><option>Road Damage</option><option>Streetlight</option><option>Drainage</option><option>Public Facility</option></select></label>
-        <label>Description<textarea placeholder="Describe the damage or issue"/></label>
-        <label>Location<input placeholder="Landmark / street / barangay"/></label>
-        <label>Photo Evidence<input type="file" accept="image/png,image/jpeg"/></label>
-        <button className="gold" type="submit">Submit Report</button>
-      </form>
-      <aside className="panel"><h2>Submission flow</h2><p>1. Submit report</p><p>2. Inspector verifies</p><p>3. Crew is assigned</p><p>4. Repair is tracked</p></aside>
-    </section>
-  </main>
-}
-
-function Tracking() {
-  return <main className="main">
-    <h1>Report #PF-0012</h1><p className="subtitle">Large pothole • Barangay Commonwealth</p>
-    <section className="panel"><h2>Current Status: <span className="gold-text">In Progress</span></h2>
-      <div className="timeline">{["Reported","Verified","Assigned","In Progress","Completed"].map(x=><span key={x}>{x}</span>)}</div>
-    </section>
-    <section className="panel audit"><h2>Status & Audit Timeline</h2>
-      <p><b>Sep 21 • 10:12</b> Report submitted — Citizen</p>
-      <p><b>Sep 21 • 13:40</b> Inspection completed — Field Inspector</p>
-      <p><b>Sep 21 • 14:05</b> Crew assignment created — Administrator</p>
-      <p><b>Sep 21 • 14:30</b> Repair started — Crew Supervisor</p>
-    </section>
-  </main>
-}
+import { DEFAULT_USERS, DEFAULT_REPORTS } from "./data/defaultData";
+import SuccessModal, { MinorModal } from "./components/Modals";
+import Sidebar from "./components/Sidebar";
+import Login from "./pages/auth/Login";
+import Register from "./pages/auth/Register";
+import Dashboard from "./pages/citizen/Dashboard";
+import SubmitReport from "./pages/citizen/SubmitReport";
+import MyReports from "./pages/citizen/MyReports";
+import ReportDetails from "./pages/citizen/ReportDetails";
+import InspectorDashboard from "./pages/inspector/InspectorDashboard";
+import InspectorReports from "./pages/inspector/InspectorReports";
+import InspectorReportDetails from "./pages/inspector/InspectorReportDetails";
+import AdminDashboard from "./pages/administrator/AdminDashboard";
+import AdminReports from "./pages/administrator/AdminReports";
+import AdminManagement from "./pages/administrator/AdminManagement";
+import AdminCompletion from "./pages/administrator/AdminCompletion";
+import Profile from "./pages/Profile";
 
 export default function App() {
-  const [active,setActive]=useState("Dashboard");
-  return <div className="app"><Sidebar active={active} setActive={setActive}/>
-    {active==="Dashboard" && <Dashboard setActive={setActive}/>}
-    {active==="Submit Report" && <SubmitReport setActive={setActive}/>}
-    {active==="My Reports" && <Tracking/>}
-    {active==="Profile" && <main className="main"><h1>Profile</h1><p className="subtitle">Account settings will be connected to authentication.</p></main>}
-  </div>
+
+  const [active, setActive] =
+    useState("Dashboard");
+
+  const [users, setUsers] =
+    useState(() =>
+      JSON.parse(
+        localStorage.getItem(
+          "users"
+        ) ||
+          JSON.stringify(
+            DEFAULT_USERS
+          )
+      )
+    );
+
+  const [reports, setReports] =
+    useState(DEFAULT_REPORTS);
+
+  const [role, setRole] =
+    useState(
+      localStorage.getItem(
+        "role"
+      ) || ""
+    );
+
+  const [email, setEmail] =
+    useState(
+      localStorage.getItem(
+        "email"
+      ) || ""
+    );
+
+  const [password, setPassword] =
+    useState("");
+
+  const [
+    authenticated,
+    setAuthenticated,
+  ] = useState(
+    localStorage.getItem(
+      "authenticated"
+    ) === "true"
+  );
+
+  const [authPage, setAuthPage] =
+    useState("login");
+
+  const [modal, setModal] =
+    useState("");
+
+  const [
+    showMinorModal,
+    setShowMinorModal,
+  ] = useState(false);
+
+  const currentUser =
+    users.find(
+      (user) =>
+        user.email === email
+    );
+
+  /* =====================================================
+     LOGIN
+  ===================================================== */
+
+  function handleLogin() {
+    const user =
+      users.find(
+        (item) =>
+          item.email.toLowerCase() ===
+            email.toLowerCase() &&
+          item.password ===
+            password
+      );
+
+    if (!user) {
+      alert(
+        "Invalid email or password."
+      );
+
+      return;
+    }
+
+    setRole(user.role);
+
+    setEmail(user.email);
+
+    localStorage.setItem(
+      "role",
+      user.role
+    );
+
+    localStorage.setItem(
+      "email",
+      user.email
+    );
+
+    localStorage.setItem(
+      "authenticated",
+      "true"
+    );
+
+    setPassword("");
+
+    setAuthenticated(true);
+
+    setActive("Dashboard");
+
+    setModal(
+      "Login successful."
+    );
+  }
+
+  /* =====================================================
+     REGISTRATION
+  ===================================================== */
+
+  function handleRegistrationSuccess() {
+    const storedUsers =
+      JSON.parse(
+        localStorage.getItem(
+          "users"
+        ) ||
+          JSON.stringify(
+            DEFAULT_USERS
+          )
+      );
+
+    setUsers(storedUsers);
+
+    setAuthPage("login");
+
+    setModal(
+      "Your account has been created successfully."
+    );
+  }
+
+  /* =====================================================
+     SUBMIT REPORT
+  ===================================================== */
+
+  function handleSubmitReport(
+    report
+  ) {
+    setReports(
+      (previousReports) => [
+        report,
+        ...previousReports,
+      ]
+    );
+
+    setActive("My Reports");
+
+    setModal(
+      "Your report has been submitted successfully."
+    );
+  }
+
+  /* =====================================================
+     UPDATE REPORT
+  ===================================================== */
+
+  function updateReportStatus(
+    reportId,
+    status,
+    inspection = {}
+  ) {
+    setReports(
+      (previousReports) =>
+        previousReports.map(
+          (report) =>
+            report.id === reportId
+              ? {
+                  ...report,
+                    status,
+                    ...inspection,
+                  }
+              : report
+        )
+    );
+  }
+
+  function createAdminUser(user) {
+    const exists = users.some(
+      (item) =>
+        item.email.toLowerCase() ===
+        user.email.toLowerCase()
+    );
+
+    if (exists) {
+      alert(
+        "An account with this email already exists."
+      );
+      return false;
+    }
+
+    setUsers((previousUsers) => {
+      const nextUsers = [
+        ...previousUsers,
+        user,
+      ];
+      localStorage.setItem(
+        "users",
+        JSON.stringify(nextUsers)
+      );
+      return nextUsers;
+    });
+    return true;
+  }
+
+  /* =====================================================
+     LOGOUT
+  ===================================================== */
+
+  function handleLogout() {
+    localStorage.removeItem(
+      "role"
+    );
+
+    localStorage.removeItem(
+      "email"
+    );
+
+    localStorage.removeItem(
+      "authenticated"
+    );
+
+    setRole("");
+    setEmail("");
+    setPassword("");
+
+    setAuthenticated(false);
+
+    setAuthPage("login");
+
+    setActive("Dashboard");
+  }
+
+  /* =====================================================
+     AUTHENTICATION SCREEN
+  ===================================================== */
+
+  if (!authenticated) {
+
+    if (authPage === "login") {
+      return (
+        <>
+          <Login
+            email={email}
+            password={password}
+            setEmail={setEmail}
+            setPassword={
+              setPassword
+            }
+            onLogin={
+              handleLogin
+            }
+            setAuthPage={
+              setAuthPage
+            }
+          />
+
+          {modal && (
+            <SuccessModal
+              message={modal}
+              onClose={() =>
+                setModal("")
+              }
+            />
+          )}
+        </>
+      );
+    }
+
+    return (
+      <>
+        <Register
+          setAuthPage={
+            setAuthPage
+          }
+          onRegister={
+            handleRegistrationSuccess
+          }
+          setShowMinorModal={
+            setShowMinorModal
+          }
+        />
+
+        {modal && (
+          <SuccessModal
+            message={modal}
+            onClose={() =>
+              setModal("")
+            }
+          />
+        )}
+
+        {showMinorModal && (
+          <MinorModal
+            onClose={() =>
+              setShowMinorModal(
+                false
+              )
+            }
+          />
+        )}
+      </>
+    );
+  }
+
+  /* =====================================================
+     SELECTED REPORT
+  ===================================================== */
+
+  const selectedReportId =
+    active.includes(":")
+      ? active.split(":")[1]
+      : null;
+
+  const selectedReport =
+    reports.find(
+      (report) =>
+        report.id ===
+        selectedReportId
+    );
+
+  /* =====================================================
+     AUTHENTICATED APPLICATION
+  ===================================================== */
+
+  return (
+    <div className="app">
+
+      <Sidebar
+        role={role}
+        active={
+          active.includes(":")
+            ? active.split(":")[0]
+            : active
+        }
+        setActive={
+          setActive
+        }
+        user={
+          currentUser
+        }
+      />
+
+      {/* CITIZEN DASHBOARD */}
+
+      {active ===
+        "Dashboard" &&
+        role === "Citizen" && (
+          <Dashboard
+            setActive={
+              setActive
+            }
+            reports={
+              reports
+            }
+            user={
+              currentUser
+            }
+          />
+        )}
+
+      {/* INSPECTOR DASHBOARD */}
+
+      {active ===
+        "Dashboard" &&
+        role ===
+          "Field Inspector" && (
+          <InspectorDashboard
+            setActive={
+              setActive
+            }
+            reports={
+              reports
+            }
+          />
+        )}
+
+      {/* ADMIN DASHBOARD */}
+
+      {active ===
+        "Dashboard" &&
+        role ===
+          "Administrator" && (
+          <AdminDashboard
+            reports={reports}
+            users={users}
+          />
+        )}
+
+      {/* SUBMIT REPORT */}
+
+      {active ===
+        "Submit Report" &&
+        role === "Citizen" && (
+          <SubmitReport
+            setActive={
+              setActive
+            }
+            user={
+              currentUser
+            }
+            onSubmit={
+              handleSubmitReport
+            }
+          />
+        )}
+
+      {/* MY REPORTS */}
+
+      {active ===
+        "My Reports" &&
+        role === "Citizen" && (
+          <MyReports
+            setActive={
+              setActive
+            }
+            reports={
+              reports
+            }
+            user={
+              currentUser
+            }
+          />
+        )}
+
+      {/* CITIZEN REPORT DETAILS */}
+
+      {active.startsWith(
+        "Report Details:"
+      ) &&
+        role === "Citizen" && (
+          <ReportDetails
+            setActive={
+              setActive
+            }
+            report={
+              selectedReport
+            }
+          />
+        )}
+
+      {/* VERIFICATION QUEUE */}
+
+      {active ===
+        "Verification Queue" &&
+        role ===
+          "Field Inspector" && (
+          <InspectorDashboard
+            setActive={
+              setActive
+            }
+            reports={
+              reports
+            }
+          />
+        )}
+
+      {/* INSPECTOR REPORTS */}
+
+      {active ===
+        "Inspector Reports" &&
+        role ===
+          "Field Inspector" && (
+          <InspectorReports
+            setActive={
+              setActive
+            }
+            reports={
+              reports
+            }
+          />
+        )}
+
+      {/* INSPECTOR DETAILS */}
+
+      {active.startsWith(
+        "Inspector Details:"
+      ) &&
+        role ===
+          "Field Inspector" && (
+          <InspectorReportDetails
+            setActive={
+              setActive
+            }
+            report={
+              selectedReport
+            }
+            inspector={currentUser}
+            onUpdateReport={
+              updateReportStatus
+            }
+          />
+        )}
+
+      {/* ADMINISTRATOR */}
+
+      {active ===
+        "Administrator" &&
+        role ===
+          "Administrator" && (
+          <AdminManagement
+            reports={reports}
+            users={users}
+            onCreateUser={createAdminUser}
+          />
+        )}
+
+      {/* ADMIN INSPECTED REPORTS */}
+
+      {active ===
+        "Inspected Reports" &&
+        role ===
+          "Administrator" && (
+          <AdminReports
+            reports={
+              reports
+            }
+            users={
+              users
+            }
+          />
+        )}
+
+      {/* ADMIN REPORT COMPLETION */}
+
+      {active ===
+        "Report Completion" &&
+        role ===
+          "Administrator" && (
+          <AdminCompletion
+            reports={reports}
+            onUpdateReport={
+              updateReportStatus
+            }
+          />
+        )}
+
+      {/* PROFILE */}
+
+      {active === "Profile" && (
+        <Profile
+          user={
+            currentUser
+          }
+          role={role}
+          onLogout={
+            handleLogout
+          }
+        />
+      )}
+
+      {/* SUCCESS MODAL */}
+
+      {modal && (
+        <SuccessModal
+          message={modal}
+          onClose={() =>
+            setModal("")
+          }
+        />
+      )}
+
+    </div>
+  );
 }
