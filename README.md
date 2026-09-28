@@ -88,33 +88,6 @@ New → Needs Information → Under Review
 - dotenv
 - Nodemon for development
 
-## Project structure
-
-```text
-SOFTENG1_Project/
-├── backend/
-│   ├── server.js
-│   ├── .env.example
-│   ├── package.json
-│   └── src/
-├── frontend/
-│   ├── package.json
-│   ├── index.html
-│   └── src/
-│       ├── components/
-│       ├── data/
-│       ├── pages/
-│       │   ├── administrator/
-│       │   ├── auth/
-│       │   ├── citizen/
-│       │   └── inspector/
-│       ├── App.jsx
-│       ├── App.css
-│       └── main.jsx
-├── docs/
-│   └── how-to-run.md
-└── README.md
-```
 
 ## Prerequisites
 
@@ -294,4 +267,4 @@ npm run build
 ## Additional documentation
 
 See [`docs/how-to-run.md`](docs/how-to-run.md) for the existing detailed
-local setup instructions.
+
