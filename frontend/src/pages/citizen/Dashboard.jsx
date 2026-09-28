@@ -52,7 +52,7 @@ export default function Dashboard({
         />
       </div>
 
-      <section className="stats">
+      <section className="stats metric-dashboard-stats citizen-dashboard-stats">
 
         <div>
           <span>My Reports</span>
@@ -229,4 +229,3 @@ export default function Dashboard({
 /* =========================================================
    SUBMIT REPORT
 ========================================================= */
-

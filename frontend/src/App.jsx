@@ -23,6 +23,9 @@ export default function App() {
   const [active, setActive] =
     useState("Dashboard");
 
+  const [sidebarCollapsed, setSidebarCollapsed] =
+    useState(false);
+
   const [users, setUsers] = useState([]);
 
   const [reports, setReports] = useState([]);
@@ -336,6 +339,12 @@ export default function App() {
         user={
           currentUser
         }
+        collapsed={sidebarCollapsed}
+        onToggle={() =>
+          setSidebarCollapsed(
+            (collapsed) => !collapsed
+          )
+        }
       />
 
       {/* CITIZEN DASHBOARD */}
@@ -369,6 +378,7 @@ export default function App() {
             reports={
               reports
             }
+            view="recent"
           />
         )}
 
@@ -380,7 +390,6 @@ export default function App() {
           "Administrator" && (
           <AdminDashboard
             reports={reports}
-            users={users}
           />
         )}
 
@@ -449,6 +458,7 @@ export default function App() {
             reports={
               reports
             }
+            view="queue"
           />
         )}
 
@@ -492,7 +502,7 @@ export default function App() {
       {/* ADMINISTRATOR */}
 
       {active ===
-        "Administrator" &&
+        "Administrator Tools" &&
         role ===
           "Administrator" && (
           <AdminManagement
@@ -512,8 +522,8 @@ export default function App() {
             reports={
               reports
             }
-            users={
-              users
+            onUpdateReport={
+              updateReportStatus
             }
           />
         )}

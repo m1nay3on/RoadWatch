@@ -12,6 +12,11 @@ export default function InspectorReports({
       report.status === "Verified"
   );
 
+  const ongoing = reports.filter(
+    (report) =>
+      report.status === "Ongoing"
+  );
+
   const closed = reports.filter(
     (report) =>
       report.status === "Closed"
@@ -71,6 +76,32 @@ export default function InspectorReports({
 
       </section>
 
+      <section className="panel ongoing-panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">ACTIVE REPORTS</p>
+            <h2>Ongoing Reports</h2>
+            <p>View the current status of reports being resolved.</p>
+          </div>
+          <span className="section-count">
+            {ongoing.length} Ongoing
+          </span>
+        </div>
+
+        {ongoing.length === 0 ? (
+          <div className="empty-state">
+            <p>No ongoing reports yet.</p>
+          </div>
+        ) : (
+          <ReportTable
+            reports={ongoing}
+            setActive={setActive}
+            dateLabel="Date Submitted"
+            readOnly
+          />
+        )}
+      </section>
+
       <section className="panel closed-panel">
 
         <div className="section-heading">
@@ -125,6 +156,7 @@ function ReportTable({
   setActive,
   dateLabel,
   showInspector = false,
+  readOnly = false,
 }) {
   return (
     <div className="table-container">
@@ -140,8 +172,9 @@ function ReportTable({
               <th>Verified By</th>
             )}
             <th>{dateLabel}</th>
-            <th>Priority</th>
-            <th>Action</th>
+            {!readOnly && <th>Priority</th>}
+            <th>Status</th>
+            {!readOnly && <th>Action</th>}
           </tr>
         </thead>
 
@@ -172,15 +205,25 @@ function ReportTable({
                   : report.date}
               </td>
 
-              <td>
+              {!readOnly && <td>
                 <span
                   className={`priority priority-${report.priority.toLowerCase()}`}
                 >
                   {report.priority}
                 </span>
-              </td>
+              </td>}
 
               <td>
+                <span
+                  className={`status status-${report.status
+                    .toLowerCase()
+                    .replaceAll(" ", "-")}`}
+                >
+                  {report.status}
+                </span>
+              </td>
+
+              {!readOnly && <td>
                 <button
                   className="outline-btn small-btn"
                   onClick={() =>
@@ -191,7 +234,7 @@ function ReportTable({
                 >
                   View Report
                 </button>
-              </td>
+              </td>}
             </tr>
           ))}
         </tbody>

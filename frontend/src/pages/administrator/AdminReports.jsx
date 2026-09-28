@@ -2,7 +2,7 @@
 
 export default function AdminReports({
   reports,
-  users,
+  onUpdateReport,
 }) {
   const [selectedReport, setSelectedReport] =
     useState(null);
@@ -12,20 +12,14 @@ export default function AdminReports({
     useState("");
   const [rangeReports, setRangeReports] =
     useState(null);
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState("date");
+  const [sortDirection, setSortDirection] = useState("desc");
+  const [pendingStatus, setPendingStatus] = useState("");
 
   const inspectedReports = reports.filter(
     (report) =>
-      report.inspectedAt ||
-      report.status === "Verified" ||
-      report.status === "Rejected" ||
-      report.status === "Needs Information" ||
-      report.status === "Ongoing" ||
-      report.status === "Closed"
-  );
-
-  const inspectors = users.filter(
-    (user) =>
-      user.role === "Field Inspector"
+      report.status === "Verified"
   );
 
   const filteredInspectedReports =
@@ -49,6 +43,62 @@ export default function AdminReports({
         (!end || inspectedDate <= end)
       );
     });
+
+  const visibleReports = inspectedReports
+    .filter((report) => {
+      const query = search.trim().toLowerCase();
+      return (
+        !query ||
+        [report.id, report.issue, report.location, report.priority]
+          .some((value) =>
+            String(value || "").toLowerCase().includes(query)
+          )
+      );
+    })
+    .sort((left, right) => {
+      const leftValue =
+        sortBy === "priority"
+          ? left.priority
+          : sortBy === "issue"
+            ? left.issue
+            : left.inspectedAt || "";
+      const rightValue =
+        sortBy === "priority"
+          ? right.priority
+          : sortBy === "issue"
+            ? right.issue
+            : right.inspectedAt || "";
+      const comparison = String(leftValue).localeCompare(
+        String(rightValue),
+        undefined,
+        { numeric: true }
+      );
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+
+  function changeStatus(status) {
+    if (!selectedReport || status === selectedReport.status) {
+      return;
+    }
+    setPendingStatus(status);
+  }
+
+  function confirmStatusChange() {
+    if (!selectedReport || !pendingStatus) {
+      return;
+    }
+
+    onUpdateReport(selectedReport.id, pendingStatus, {
+      statusChangedAt: new Date().toISOString(),
+    });
+    setPendingStatus("");
+    setSelectedReport(null);
+  }
+
+  function closeReportModal() {
+    setPendingStatus("");
+    setSelectedReport(null);
+  }
 
   function generatePdf(report) {
     setRangeReports(null);
@@ -94,43 +144,12 @@ export default function AdminReports({
           ADMINISTRATION
         </p>
 
-        <h1>Administrator Dashboard</h1>
+        <h1>Inspected Reports</h1>
 
         <p className="subtitle">
-          Manage users, inspected reports, and
+          Review verified inspection reports and
           system activity.
         </p>
-
-        <section className="stats">
-          <div>
-            <span>Total Reports</span>
-            <strong>{reports.length}</strong>
-          </div>
-
-          <div>
-            <span>Users</span>
-            <strong>{users.length}</strong>
-          </div>
-
-          <div>
-            <span>Inspectors</span>
-            <strong>{inspectors.length}</strong>
-          </div>
-
-          <div>
-            <span>Pending</span>
-            <strong>
-              {
-                reports.filter(
-                  (report) =>
-                    report.status === "New" ||
-                    report.status ===
-                      "Needs Information"
-                ).length
-              }
-            </strong>
-          </div>
-        </section>
 
         <section className="panel report-generator-panel">
           <div className="section-heading">
@@ -197,19 +216,56 @@ export default function AdminReports({
               <h2>Inspected Reports</h2>
 
               <p>
-                Review inspector decisions and
-                generate printable PDF reports.
+                Review verified inspector decisions,
+                search records, and generate PDFs.
               </p>
             </div>
 
             <span className="section-count">
-              {inspectedReports.length} Inspected
+              {visibleReports.length} Verified
             </span>
           </div>
 
-          {inspectedReports.length === 0 ? (
+          <div className="report-filter-form">
+            <label>
+              Search
+              <input
+                type="search"
+                placeholder="ID, issue, location..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </label>
+            <label>
+              Sort by
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+              >
+                <option value="date">Reviewed date</option>
+                <option value="priority">Priority</option>
+                <option value="issue">Issue</option>
+              </select>
+            </label>
+            <button
+              className="outline-btn"
+              onClick={() =>
+                setSortDirection((direction) =>
+                  direction === "asc" ? "desc" : "asc"
+                )
+              }
+            >
+              {sortDirection === "asc" ? "Ascending" : "Descending"}
+            </button>
+          </div>
+
+          {visibleReports.length === 0 ? (
             <div className="empty-state">
-              <p>No inspected reports yet.</p>
+              <p>
+                {inspectedReports.length === 0
+                  ? "No verified reports yet."
+                  : "No reports match your search."}
+              </p>
             </div>
           ) : (
             <div className="table-container">
@@ -220,6 +276,7 @@ export default function AdminReports({
                     <th>Issue</th>
                     <th>Location</th>
                     <th>Inspector</th>
+                    <th>Priority</th>
                     <th>Status</th>
                     <th>Reviewed</th>
                     <th>Action</th>
@@ -227,7 +284,7 @@ export default function AdminReports({
                 </thead>
 
                 <tbody>
-                  {inspectedReports.map((report) => (
+                  {visibleReports.map((report) => (
                     <tr key={report.id}>
                       <td>
                         <strong>{report.id}</strong>
@@ -240,6 +297,14 @@ export default function AdminReports({
                         {report.inspectedBy ||
                           report.verifiedBy ||
                           "Not assigned"}
+                      </td>
+
+                      <td>
+                        <span
+                          className={`priority priority-${report.priority.toLowerCase()}`}
+                        >
+                          {report.priority}
+                        </span>
                       </td>
 
                       <td>
@@ -280,7 +345,8 @@ export default function AdminReports({
         </section>
 
         {selectedReport && (
-          <section className="panel report-preview no-print">
+          <div className="modal-overlay no-print">
+            <section className="modal report-preview">
             <div className="section-heading">
               <div>
                 <p className="eyebrow">
@@ -293,14 +359,20 @@ export default function AdminReports({
                 </h2>
               </div>
 
-              <button
-                className="gold"
-                onClick={() =>
-                  generatePdf(selectedReport)
-                }
-              >
-                Generate PDF
-              </button>
+              <div className="action-buttons">
+                <button
+                  className="gold"
+                  onClick={() => generatePdf(selectedReport)}
+                >
+                  Generate PDF
+                </button>
+                <button
+                  className="outline-btn"
+                  onClick={closeReportModal}
+                >
+                  Close
+                </button>
+              </div>
             </div>
 
             <div className="detail-list">
@@ -337,7 +409,55 @@ export default function AdminReports({
                   "No inspection notes provided."}
               </p>
             </div>
-          </section>
+            <label>
+              Change Status
+              <select
+                value={selectedReport.status}
+                onChange={(e) => changeStatus(e.target.value)}
+              >
+                <option>Verified</option>
+                <option>Ongoing</option>
+                <option>Rejected</option>
+                <option>Needs Information</option>
+              </select>
+            </label>
+            </section>
+          </div>
+        )}
+
+        {pendingStatus && selectedReport && (
+          <div className="modal-overlay no-print">
+            <section
+              className="modal confirmation-modal"
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="status-confirmation-title"
+            >
+              <div className="warning-icon">!</div>
+              <h2 id="status-confirmation-title">
+                Confirm Status Change
+              </h2>
+              <p>
+                Change report <strong>{selectedReport.id}</strong>{" "}
+                from <strong>{selectedReport.status}</strong> to{" "}
+                <strong>{pendingStatus}</strong>?
+              </p>
+              <div className="action-buttons">
+                <button
+                  className="outline-btn"
+                  onClick={() => setPendingStatus("")}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="gold"
+                  onClick={confirmStatusChange}
+                >
+                  Confirm Change
+                </button>
+              </div>
+            </section>
+          </div>
         )}
 
         {rangeReports && (
