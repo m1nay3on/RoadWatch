@@ -1,6 +1,6 @@
 ﻿import { useState } from "react";
 import logo from "../../assets/roadwatch-logo.png";
-import { DEFAULT_USERS, calculateAge } from "../../data/defaultData";
+import { calculateAge } from "../../data/defaultData";
 export default function Register({
   setAuthPage,
   onRegister,
@@ -71,25 +71,6 @@ export default function Register({
       return;
     }
 
-    const existingUsers = JSON.parse(
-      localStorage.getItem("users") ||
-        JSON.stringify(DEFAULT_USERS)
-    );
-
-    const emailExists =
-      existingUsers.some(
-        (user) =>
-          user.email.toLowerCase() ===
-          form.email.toLowerCase()
-      );
-
-    if (emailExists) {
-      alert(
-        "An account with this email already exists."
-      );
-      return;
-    }
-
     const newUser = {
       firstName: form.firstName,
       lastName: form.lastName,
@@ -109,15 +90,7 @@ export default function Register({
       role: "Citizen",
     };
 
-    localStorage.setItem(
-      "users",
-      JSON.stringify([
-        ...existingUsers,
-        newUser,
-      ])
-    );
-
-    onRegister();
+    onRegister(newUser);
   }
 
   return (

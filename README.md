@@ -94,7 +94,7 @@ Install the following:
 
 - Node.js 18 or newer
 - npm
-- MongoDB, if database-backed backend features are needed
+- MongoDB running locally or a MongoDB connection string
 
 ## Installation
 
@@ -133,6 +133,7 @@ The default values are:
 ```env
 PORT=5000
 MONGODB_URI=mongodb://127.0.0.1:27017/softeng1
+AUTH_TOKEN_SECRET=replace-this-with-a-long-random-secret
 ```
 
 Keep `.env` private and do not commit credentials or secrets.
@@ -163,9 +164,15 @@ The health endpoint returns:
 
 ```json
 {
-  "status": "ok"
+  "status": "ok",
+  "database": "connected"
 }
 ```
+
+The API uses the existing `users`, `reports`, `categories`, `assignments`,
+`report_photos`, `status_logs`, and `verifications` collections. MongoDB must be
+available before the backend starts. Development demo accounts are seeded only
+when the `users` collection is empty; they are never seeded in production.
 
 ### Start the frontend
 
@@ -184,7 +191,7 @@ http://localhost:5173
 
 ## Demo accounts
 
-The frontend includes default demo users for local development:
+Development demo accounts (seeded only into an empty local `users` collection):
 
 | Role | Email | Password |
 |---|---|---|

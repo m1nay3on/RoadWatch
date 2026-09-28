@@ -10,81 +10,98 @@ Install the following before running the project:
 
 ## First-time setup
 
-Open PowerShell in the project root:
+Open PowerShell in the repository root, then install both applications:
 
 ```powershell
-cd C:\school\softeng1
+npm --prefix backend install
+npm --prefix frontend install
 ```
 
-Install backend dependencies:
+## Configure MongoDB
+
+The backend uses the `softeng1` database and these defaults:
+
+```env
+PORT=5000
+MONGODB_URI=mongodb://127.0.0.1:27017/softeng1
+AUTH_TOKEN_SECRET=replace-this-with-a-long-random-secret
+```
+
+Create the local environment file from the example:
 
 ```powershell
-cd backend
-npm install
+Copy-Item backend/.env.example backend/.env
 ```
 
-Install frontend dependencies:
+Edit `backend/.env` if MongoDB uses another URI. Set `AUTH_TOKEN_SECRET` to a
+long random value when running outside local development. Do not commit `.env`.
 
-```powershell
-cd ..\frontend
-npm install
-```
+MongoDB must be running before the API starts. The backend connects to the
+existing collections and does not drop data. In development, demo users are
+created only when `users` is empty; categories are added if missing.
 
-## Configure the backend
+## Start the applications
 
-Create a local environment file from the safe example:
-
-```powershell
-cd ..\backend
-Copy-Item .env.example .env
-```
-
-Keep `.env` private. It is ignored by Git. Update `MONGODB_URI` in `.env` if MongoDB is not using the default local connection.
-
-## Start the backend
-
-Open a terminal in the project root and run:
+Start the backend in one terminal:
 
 ```powershell
 cd backend
 npm run dev
 ```
 
-The API runs at:
-
-```text
-http://localhost:5000
-```
-
-Health check:
-
-```text
-http://localhost:5000/api/health
-```
-
-The backend can start without MongoDB for the health check, but database-backed features require a working MongoDB connection.
-
-## Start the frontend
-
-Open a second terminal and run:
+Start the frontend in a second terminal:
 
 ```powershell
-cd C:\school\softeng1\frontend
+cd frontend
 npm run dev
 ```
 
-Open the URL printed by Vite, normally:
+Open the Vite URL printed in the terminal, normally:
 
 ```text
 http://localhost:5173
 ```
 
-## Verify the frontend
+Vite proxies `/api` requests to the backend. The API is available at
+`http://localhost:5000`; verify its MongoDB connection at:
 
-Build the frontend for a production check:
+```text
+http://localhost:5000/api/health
+```
+
+The health response should include `"database": "connected"`.
+
+## Demo Login
+
+On an empty development `users` collection, the backend creates these accounts:
+
+| Role | Email | Password |
+|---|---|---|
+| Citizen | `citizen@roadwatch.com` | `123456` |
+| Field Inspector | `inspector@roadwatch.com` | `123456` |
+| Administrator | `admin@roadwatch.com` | `123456` |
+
+They are for local development only. Do not use these credentials in production.
+
+## Load Sample Reports
+
+After starting the backend once so development users exist, follow the MongoDB
+sample-data instructions in [database/sample-data.md](database/sample-data.md).
+That script adds sample categories and reports without deleting existing data.
+
+## Verify
+
+Run backend tests:
 
 ```powershell
-cd C:\school\softeng1\frontend
+cd backend
+npm test
+```
+
+Build the frontend:
+
+```powershell
+cd frontend
 npm run build
 ```
 
@@ -100,4 +117,5 @@ Press `Ctrl+C` in each terminal running the backend or frontend.
 
 ## Security reminder
 
-Do not commit `.env`, API keys, passwords, tokens, private keys, or uploaded photos. Use `.env.example` only for safe placeholder configuration.
+Do not commit `.env`, API keys, passwords, tokens, private keys, or uploaded
+photos. Use `.env.example` only for safe placeholder configuration.
