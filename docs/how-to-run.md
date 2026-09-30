@@ -111,6 +111,9 @@ Run the frontend linter:
 npm run lint
 ```
 
+GitHub Actions runs the backend tests and frontend lint/build checks on each
+push and pull request.
+
 ## Stop the applications
 
 Press `Ctrl+C` in each terminal running the backend or frontend.
