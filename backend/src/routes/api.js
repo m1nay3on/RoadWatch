@@ -3,6 +3,7 @@ const express = require('express');
 const { requireAuth, requireRole, signToken } = require('../middleware/auth');
 const { Assignment, Category, Report, ReportPhoto, StatusLog, User, Verification } = require('../models');
 const { hashPassword } = require('../services/seedDefaults');
+const { applyListQuery } = require('../utils/listQuery');
 const {
   canTransition,
   isPriority,
@@ -75,6 +76,12 @@ function reportQueryById(id) {
   return { $or: [{ id }, { reportId: id }, { report_id: id }] };
 }
 
+function sendList(res, items, query, configuration) {
+  const result = applyListQuery(items, query, configuration);
+  if (result.error) return res.status(400).json({ message: result.error });
+  return res.json(result.requested ? { data: result.data, pagination: result.pagination } : result.data);
+}
+
 async function canAccessReport(req, reportId) {
   if (req.auth.role !== 'Citizen') return true;
   const reportDocument = await Report.findOne(reportQueryById(reportId));
@@ -144,9 +151,7 @@ router.post('/auth/register', async (req, res, next) => {
   }
 });
 
-router.use(requireAuth);
-
-router.get('/auth/me', async (req, res, next) => {
+router.get('/auth/me', requireAuth, async (req, res, next) => {
   try {
     const users = await User.find({}).limit(1000);
     const user = users.find((candidate) => getEmail(plain(candidate)) === req.auth.email);
@@ -157,16 +162,27 @@ router.get('/auth/me', async (req, res, next) => {
   }
 });
 
-router.get('/users', requireRole('Administrator'), async (req, res, next) => {
+router.get('/users', requireAuth, requireRole('Administrator'), async (req, res, next) => {
   try {
     const users = await User.find({}).sort({ createdAt: -1 }).limit(1000);
-    return res.json(users.map(safeUser));
+    return sendList(res, users.map(safeUser), req.query, {
+      defaultSort: 'createdAt',
+      sortFields: {
+        createdAt: ['createdAt', 'created_at'],
+        firstName: ['firstName', 'first_name'],
+        lastName: ['lastName', 'last_name'],
+        email: ['email', 'emailAddress'],
+        role: ['role', 'userRole'],
+      },
+      filterFields: { role: ['role', 'userRole'] },
+      searchFields: ['firstName', 'lastName', 'email', 'role'],
+    });
   } catch (error) {
     return next(error);
   }
 });
 
-router.post('/users', requireRole('Administrator'), async (req, res, next) => {
+router.post('/users', requireAuth, requireRole('Administrator'), async (req, res, next) => {
   try {
     const input = req.body || {};
     const validation = validateUserInput(input, { administrator: true });
@@ -194,16 +210,21 @@ router.post('/users', requireRole('Administrator'), async (req, res, next) => {
   }
 });
 
-router.get('/categories', async (req, res, next) => {
+router.get('/categories', requireAuth, async (req, res, next) => {
   try {
     const categories = await Category.find({ active: { $ne: false } }).sort({ name: 1, category_name: 1 });
-    return res.json(categories.map((category) => plain(category)));
+    return sendList(res, categories.map((category) => plain(category)), req.query, {
+      defaultSort: 'name',
+      sortFields: { name: ['name', 'categoryName', 'category_name'] },
+      filterFields: {},
+      searchFields: ['name', 'categoryName', 'category_name', 'description'],
+    });
   } catch (error) {
     return next(error);
   }
 });
 
-router.get('/reports', async (req, res, next) => {
+router.get('/reports', requireAuth, async (req, res, next) => {
   try {
     let reports = await Report.find({}).sort({ createdAt: -1, created_at: -1 }).limit(2000);
     reports = reports.map(publicReport);
@@ -213,13 +234,29 @@ router.get('/reports', async (req, res, next) => {
         String(report.citizenId || '') === req.auth.userId
       ));
     }
-    return res.json(reports);
+    return sendList(res, reports, req.query, {
+      defaultSort: 'createdAt',
+      sortFields: {
+        createdAt: ['createdAt', 'created_at'],
+        status: ['status'],
+        priority: ['priority'],
+        category: ['category', 'issue'],
+        location: ['location'],
+        id: ['id', 'reportId', 'report_id'],
+      },
+      filterFields: {
+        status: ['status'],
+        category: ['category', 'issue'],
+        priority: ['priority'],
+      },
+      searchFields: ['id', 'reportId', 'reporter', 'category', 'issue', 'location', 'description', 'status'],
+    });
   } catch (error) {
     return next(error);
   }
 });
 
-router.get('/reports/:id', async (req, res, next) => {
+router.get('/reports/:id', requireAuth, async (req, res, next) => {
   try {
     if (!await canAccessReport(req, req.params.id)) {
       return res.status(404).json({ message: 'Report not found.' });
@@ -232,7 +269,7 @@ router.get('/reports/:id', async (req, res, next) => {
   }
 });
 
-router.post('/reports', requireRole('Citizen'), async (req, res, next) => {
+router.post('/reports', requireAuth, requireRole('Citizen'), async (req, res, next) => {
   try {
     const validation = validateReportInput(req.body);
     if (validation.error) return res.status(400).json({ message: validation.error });
@@ -290,7 +327,7 @@ router.post('/reports', requireRole('Citizen'), async (req, res, next) => {
   }
 });
 
-router.patch('/reports/:id/status', requireRole('Field Inspector', 'Administrator'), async (req, res, next) => {
+router.patch('/reports/:id/status', requireAuth, requireRole('Field Inspector', 'Administrator'), async (req, res, next) => {
   try {
     const body = req.body || {};
     const { status } = body;
@@ -403,7 +440,7 @@ router.patch('/reports/:id/status', requireRole('Field Inspector', 'Administrato
   }
 });
 
-router.get('/reports/:id/status-logs', async (req, res, next) => {
+router.get('/reports/:id/status-logs', requireAuth, async (req, res, next) => {
   try {
     if (!await canAccessReport(req, req.params.id)) {
       return res.status(404).json({ message: 'Report not found.' });
@@ -415,7 +452,7 @@ router.get('/reports/:id/status-logs', async (req, res, next) => {
   }
 });
 
-router.get('/reports/:id/verification', async (req, res, next) => {
+router.get('/reports/:id/verification', requireAuth, async (req, res, next) => {
   try {
     if (!await canAccessReport(req, req.params.id)) {
       return res.status(404).json({ message: 'Report not found.' });
@@ -428,7 +465,7 @@ router.get('/reports/:id/verification', async (req, res, next) => {
   }
 });
 
-router.get('/reports/:id/photos', async (req, res, next) => {
+router.get('/reports/:id/photos', requireAuth, async (req, res, next) => {
   try {
     if (!await canAccessReport(req, req.params.id)) {
       return res.status(404).json({ message: 'Report not found.' });
@@ -440,17 +477,27 @@ router.get('/reports/:id/photos', async (req, res, next) => {
   }
 });
 
-router.get('/assignments', requireRole('Field Inspector', 'Administrator'), async (req, res, next) => {
+router.get('/assignments', requireAuth, requireRole('Field Inspector', 'Administrator'), async (req, res, next) => {
   try {
     const query = req.auth.role === 'Administrator' ? {} : { assigned_to_email: req.auth.email };
     const assignments = await Assignment.find(query).sort({ assigned_at: -1 });
-    return res.json(assignments.map(plain));
+    return sendList(res, assignments.map(plain), req.query, {
+      defaultSort: 'assignedAt',
+      sortFields: {
+        assignedAt: ['assignedAt', 'assigned_at'],
+        status: ['status'],
+        reportId: ['reportId', 'report_id'],
+        assignedToEmail: ['assignedToEmail', 'assigned_to_email'],
+      },
+      filterFields: { status: ['status'] },
+      searchFields: ['reportId', 'report_id', 'assignedToEmail', 'assigned_to_email', 'status'],
+    });
   } catch (error) {
     return next(error);
   }
 });
 
-router.post('/assignments', requireRole('Administrator'), async (req, res, next) => {
+router.post('/assignments', requireAuth, requireRole('Administrator'), async (req, res, next) => {
   try {
     const validation = validateAssignmentInput(req.body);
     if (validation.error) return res.status(400).json({ message: validation.error });
@@ -483,11 +530,6 @@ router.post('/assignments', requireRole('Administrator'), async (req, res, next)
   } catch (error) {
     return next(error);
   }
-});
-
-router.use((error, req, res, next) => {
-  console.error(error);
-  return res.status(500).json({ message: 'An unexpected server error occurred.' });
 });
 
 module.exports = router;
