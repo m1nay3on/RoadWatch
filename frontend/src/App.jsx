@@ -1,6 +1,6 @@
-﻿import { useState } from "react";
+﻿import { useEffect, useState } from "react";
 import "./App.css";
-import { DEFAULT_USERS, DEFAULT_REPORTS } from "./data/defaultData";
+import { api } from "./services/api";
 import SuccessModal, { MinorModal } from "./components/Modals";
 import Sidebar from "./components/Sidebar";
 import Login from "./pages/auth/Login";
@@ -23,25 +23,14 @@ export default function App() {
   const [active, setActive] =
     useState("Dashboard");
 
-  const [
-    sidebarCollapsed,
-    setSidebarCollapsed,
-  ] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] =
+    useState(false);
 
-  const [users, setUsers] =
-    useState(() =>
-      JSON.parse(
-        localStorage.getItem(
-          "users"
-        ) ||
-          JSON.stringify(
-            DEFAULT_USERS
-          )
-      )
-    );
+  const [users, setUsers] = useState([]);
 
-  const [reports, setReports] =
-    useState(DEFAULT_REPORTS);
+  const [reports, setReports] = useState([]);
+
+  const [currentUser, setCurrentUser] = useState(null);
 
   const [role, setRole] =
     useState(
@@ -63,10 +52,10 @@ export default function App() {
   const [
     authenticated,
     setAuthenticated,
-  ] = useState(
-    localStorage.getItem(
-      "authenticated"
-    ) === "true"
+  ] = useState(false);
+
+  const [authLoading, setAuthLoading] = useState(
+    Boolean(localStorage.getItem("token"))
   );
 
   const [authPage, setAuthPage] =
@@ -80,159 +69,131 @@ export default function App() {
     setShowMinorModal,
   ] = useState(false);
 
-  const currentUser =
-    users.find(
-      (user) =>
-        user.email === email
-    );
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setAuthLoading(false);
+      return undefined;
+    }
+
+    let activeRequest = true;
+    async function restoreSession() {
+      try {
+        const { user } = await api.get("/auth/me");
+        const [loadedReports, loadedUsers] = await Promise.all([
+          api.get("/reports"),
+          user.role === "Administrator" ? api.get("/users") : Promise.resolve([user]),
+        ]);
+        if (!activeRequest) return;
+        setCurrentUser(user);
+        setRole(user.role);
+        setEmail(user.email);
+        setReports(loadedReports);
+        setUsers(loadedUsers);
+        setAuthenticated(true);
+      } catch {
+        localStorage.removeItem("token");
+        localStorage.removeItem("role");
+        localStorage.removeItem("email");
+        localStorage.removeItem("authenticated");
+      } finally {
+        if (activeRequest) setAuthLoading(false);
+      }
+    }
+
+    restoreSession();
+    return () => {
+      activeRequest = false;
+    };
+  }, []);
 
   /* =====================================================
      LOGIN
   ===================================================== */
 
-  function handleLogin() {
-    const user =
-      users.find(
-        (item) =>
-          item.email.toLowerCase() ===
-            email.toLowerCase() &&
-          item.password ===
-            password
-      );
+  async function handleLogin() {
+    try {
+      const result = await api.post("/auth/login", { email, password }, false);
+      localStorage.setItem("token", result.token);
+      localStorage.setItem("role", result.user.role);
+      localStorage.setItem("email", result.user.email);
+      localStorage.setItem("user", JSON.stringify(result.user));
 
-    if (!user) {
-      alert(
-        "Invalid email or password."
-      );
-
-      return;
+      const [loadedReports, loadedUsers] = await Promise.all([
+        api.get("/reports"),
+        result.user.role === "Administrator" ? api.get("/users") : Promise.resolve([result.user]),
+      ]);
+      setCurrentUser(result.user);
+      setRole(result.user.role);
+      setEmail(result.user.email);
+      setUsers(loadedUsers);
+      setReports(loadedReports);
+      setPassword("");
+      setAuthenticated(true);
+      setActive("Dashboard");
+      setModal("Login successful.");
+    } catch (error) {
+      alert(error.message);
     }
-
-    setRole(user.role);
-
-    setEmail(user.email);
-
-    localStorage.setItem(
-      "role",
-      user.role
-    );
-
-    localStorage.setItem(
-      "email",
-      user.email
-    );
-
-    localStorage.setItem(
-      "authenticated",
-      "true"
-    );
-
-    setPassword("");
-
-    setAuthenticated(true);
-
-    setActive("Dashboard");
-
-    setModal(
-      "Login successful."
-    );
   }
 
   /* =====================================================
      REGISTRATION
   ===================================================== */
 
-  function handleRegistrationSuccess() {
-    const storedUsers =
-      JSON.parse(
-        localStorage.getItem(
-          "users"
-        ) ||
-          JSON.stringify(
-            DEFAULT_USERS
-          )
-      );
-
-    setUsers(storedUsers);
-
-    setAuthPage("login");
-
-    setModal(
-      "Your account has been created successfully."
-    );
+  async function handleRegistrationSuccess(user) {
+    try {
+      const result = await api.post("/auth/register", user, false);
+      setUsers((previousUsers) => [...previousUsers, result.user]);
+      setAuthPage("login");
+      setModal("Your account has been created successfully.");
+    } catch (error) {
+      alert(error.message);
+    }
   }
 
   /* =====================================================
      SUBMIT REPORT
   ===================================================== */
 
-  function handleSubmitReport(
-    report
-  ) {
-    setReports(
-      (previousReports) => [
-        report,
-        ...previousReports,
-      ]
-    );
-
-    setActive("My Reports");
-
-    setModal(
-      "Your report has been submitted successfully."
-    );
+  async function handleSubmitReport(report) {
+    try {
+      const createdReport = await api.post("/reports", report);
+      setReports((previousReports) => [createdReport, ...previousReports]);
+      setActive("My Reports");
+      setModal("Your report has been submitted successfully.");
+    } catch (error) {
+      alert(error.message);
+    }
   }
 
   /* =====================================================
      UPDATE REPORT
   ===================================================== */
 
-  function updateReportStatus(
-    reportId,
-    status,
-    inspection = {}
-  ) {
-    setReports(
-      (previousReports) =>
-        previousReports.map(
-          (report) =>
-            report.id === reportId
-              ? {
-                  ...report,
-                    status,
-                    ...inspection,
-                  }
-              : report
-        )
-    );
+  async function updateReportStatus(reportId, status, inspection = {}) {
+    try {
+      const updatedReport = await api.patch(`/reports/${encodeURIComponent(reportId)}/status`, {
+        status,
+        ...inspection,
+      });
+      setReports((previousReports) => previousReports.map((report) => (
+        report.id === reportId ? updatedReport : report
+      )));
+    } catch (error) {
+      alert(error.message);
+    }
   }
 
-  function createAdminUser(user) {
-    const exists = users.some(
-      (item) =>
-        item.email.toLowerCase() ===
-        user.email.toLowerCase()
-    );
-
-    if (exists) {
-      alert(
-        "An account with this email already exists."
-      );
+  async function createAdminUser(user) {
+    try {
+      const createdUser = await api.post("/users", user);
+      setUsers((previousUsers) => [...previousUsers, createdUser]);
+      return true;
+    } catch (error) {
+      alert(error.message);
       return false;
     }
-
-    setUsers((previousUsers) => {
-      const nextUsers = [
-        ...previousUsers,
-        user,
-      ];
-      localStorage.setItem(
-        "users",
-        JSON.stringify(nextUsers)
-      );
-      return nextUsers;
-    });
-    return true;
   }
 
   /* =====================================================
@@ -251,9 +212,12 @@ export default function App() {
     localStorage.removeItem(
       "authenticated"
     );
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
 
     setRole("");
     setEmail("");
+    setCurrentUser(null);
     setPassword("");
 
     setAuthenticated(false);
@@ -268,6 +232,10 @@ export default function App() {
   ===================================================== */
 
   if (!authenticated) {
+
+    if (authLoading) {
+      return <main className="auth-page" aria-live="polite">Loading account...</main>;
+    }
 
     if (authPage === "login") {
       return (

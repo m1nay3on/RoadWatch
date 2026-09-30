@@ -26,7 +26,7 @@ export default function AdminManagement({
     }));
   }
 
-  function createAccount(event) {
+  async function createAccount(event) {
     event.preventDefault();
 
     if (
@@ -44,7 +44,7 @@ export default function AdminManagement({
       return;
     }
 
-    const created = onCreateUser({
+    const created = await onCreateUser({
       ...form,
       birthday: "",
       mobile: "",
