@@ -51,8 +51,6 @@ test('priority and status transitions follow the workflow rules', () => {
   assert.equal(isPriority('Critical'), false);
   assert.equal(canTransition('Field Inspector', 'New', 'Verified'), true);
   assert.equal(canTransition('Field Inspector', 'New', 'Closed'), false);
-  assert.equal(canTransition('Field Inspector', 'Verified', 'Rejected'), true);
-  assert.equal(canTransition('Administrator', 'Verified', 'Rejected'), false);
   assert.equal(canTransition('Administrator', 'Verified', 'Closed'), true);
   assert.equal(canTransition('Administrator', 'New', 'Closed'), false);
 });

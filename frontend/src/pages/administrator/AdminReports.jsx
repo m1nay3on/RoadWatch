@@ -76,8 +76,26 @@ export default function AdminReports({
       return sortDirection === "asc" ? comparison : -comparison;
     });
 
+  function getAllowedStatusOptions(report) {
+    if (!report) return [];
+
+    if (report.status === "Verified") {
+      return ["Verified", "Ongoing", "Closed"];
+    }
+
+    if (report.status === "Ongoing") {
+      return ["Ongoing", "Closed"];
+    }
+
+    return [report.status];
+  }
+
   function changeStatus(status) {
-    if (!selectedReport || status === selectedReport.status) {
+    if (!selectedReport || !getAllowedStatusOptions(selectedReport).includes(status)) {
+      return;
+    }
+
+    if (status === selectedReport.status) {
       return;
     }
     setPendingStatus(status);
@@ -85,6 +103,11 @@ export default function AdminReports({
 
   function confirmStatusChange() {
     if (!selectedReport || !pendingStatus) {
+      return;
+    }
+
+    const allowedStatusOptions = getAllowedStatusOptions(selectedReport);
+    if (!allowedStatusOptions.includes(pendingStatus)) {
       return;
     }
 
@@ -415,10 +438,11 @@ export default function AdminReports({
                 value={selectedReport.status}
                 onChange={(e) => changeStatus(e.target.value)}
               >
-                <option>Verified</option>
-                <option>Ongoing</option>
-                <option>Rejected</option>
-                <option>Needs Information</option>
+                {getAllowedStatusOptions(selectedReport).map((status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                ))}
               </select>
             </label>
             </section>

@@ -334,33 +334,9 @@ export default function InspectorReportDetails({
           </div>
 
           <p className="inspection-readonly-note">
-            This report has already been verified. You can still reject it if
-            your inspection findings have changed.
+            This report has already been verified.
+            Verification actions are no longer available.
           </p>
-
-          <label>
-            Rejection Notes
-
-            <textarea
-              className="notes-area"
-              placeholder="Explain why this verified report should be rejected..."
-              value={notes}
-              onChange={(e) =>
-                setNotes(e.target.value)
-              }
-            />
-          </label>
-
-          <div className="action-buttons">
-            <button
-              className="danger-btn"
-              onClick={() =>
-                updateStatus("Rejected")
-              }
-            >
-              Reject Report
-            </button>
-          </div>
 
         </section>
       ) : (

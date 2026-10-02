@@ -8,7 +8,7 @@ const transitions = {
     New: ['Under Review', 'Verified', 'Needs Information', 'Rejected'],
     'Under Review': ['Verified', 'Needs Information', 'Rejected'],
     'Needs Information': ['Under Review', 'Verified', 'Needs Information', 'Rejected'],
-    Verified: ['Ongoing', 'Rejected'],
+    Verified: ['Ongoing'],
   },
   Administrator: {
     Verified: ['Ongoing', 'Closed'],

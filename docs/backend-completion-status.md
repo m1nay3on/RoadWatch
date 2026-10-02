@@ -40,7 +40,7 @@ and `verifications`.
 | Field Inspector | New | Under Review, Verified, Needs Information, Rejected |
 | Field Inspector | Under Review | Verified, Needs Information, Rejected |
 | Field Inspector | Needs Information | Under Review, Verified, Needs Information, Rejected |
-| Field Inspector | Verified | Ongoing, with an active assignment to that inspector, or Rejected |
+| Field Inspector | Verified | Ongoing, with an active assignment to that inspector |
 | Administrator | Verified | Ongoing, with an active assignment, or Closed |
 | Administrator | Ongoing | Closed |
 
