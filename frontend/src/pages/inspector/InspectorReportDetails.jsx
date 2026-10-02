@@ -184,14 +184,6 @@ export default function InspectorReportDetails({
 
             <p>
               <strong>
-                Priority:
-              </strong>
-
-              {report.priority}
-            </p>
-
-            <p>
-              <strong>
                 Date:
               </strong>
 

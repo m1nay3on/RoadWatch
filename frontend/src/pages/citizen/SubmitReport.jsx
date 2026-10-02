@@ -10,7 +10,7 @@ export default function SubmitReport({
 }) {
   const [form, setForm] =
     useState({
-      category: "Road Damage",
+      category: "",
       description: "",
       location: "",
       evidence: [],
@@ -25,11 +25,12 @@ export default function SubmitReport({
     }
 
     if (
-      !form.description ||
-      !form.location
+      !form.category ||
+      !form.description.trim() ||
+      !form.location.trim()
     ) {
       alert(
-        "Please complete the description and location."
+        "Please complete the category, description, and location before submitting."
       );
 
       return;
@@ -199,6 +200,7 @@ export default function SubmitReport({
 
             <select
               value={form.category}
+              required
               onChange={(e) =>
                 setForm({
                   ...form,
@@ -207,19 +209,23 @@ export default function SubmitReport({
                 })
               }
             >
-              <option>
+              <option value="">
+                Select an issue type
+              </option>
+
+              <option value="Road Damage">
                 Road Damage
               </option>
 
-              <option>
+              <option value="Streetlight">
                 Streetlight
               </option>
 
-              <option>
+              <option value="Drainage">
                 Drainage
               </option>
 
-              <option>
+              <option value="Public Facility">
                 Public Facility
               </option>
             </select>
@@ -233,6 +239,7 @@ export default function SubmitReport({
               value={
                 form.description
               }
+              required
               onChange={(e) =>
                 setForm({
                   ...form,
@@ -251,6 +258,7 @@ export default function SubmitReport({
               value={
                 form.location
               }
+              required
               onChange={(e) =>
                 setForm({
                   ...form,
