@@ -1,4 +1,5 @@
 import logo from "../../assets/roadwatch-logo.png";
+import { getLatestReports } from "../../utils/reportSort";
 
 
 export default function InspectorDashboard({
@@ -11,7 +12,7 @@ export default function InspectorDashboard({
       report.status
     )
   );
-  const recentReports = reports.slice(0, 5);
+  const recentReports = getLatestReports(reports);
   const verified = reports.filter(
     (report) => report.status === "Verified"
   );

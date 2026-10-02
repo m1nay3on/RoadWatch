@@ -1,6 +1,9 @@
+import { getLatestReports } from "../../utils/reportSort";
+
 export default function AdminDashboard({
   reports,
 }) {
+  const recentReports = getLatestReports(reports);
   const pending = reports.filter(
     (report) =>
       report.status === "New" ||
@@ -95,7 +98,7 @@ export default function AdminDashboard({
             </thead>
 
             <tbody>
-              {reports.slice(0, 5).map((report) => (
+              {recentReports.map((report) => (
                 <tr key={report.id}>
                   <td>
                     <strong>{report.id}</strong>

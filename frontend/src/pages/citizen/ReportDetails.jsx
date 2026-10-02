@@ -1,4 +1,7 @@
-﻿export default function ReportDetails({
+﻿import EvidencePhoto from "../../components/EvidencePhoto";
+import ReportTimeline from "../../components/ReportTimeline";
+
+export default function ReportDetails({
   setActive,
   report,
 }) {
@@ -193,196 +196,12 @@
         <h2>Evidence</h2>
 
         <div className="evidence-placeholder">
-
-          {report.evidence ? (
-            <p>
-              Uploaded file:{" "}
-              {report.evidence}
-            </p>
-          ) : (
-            <p>
-              No evidence photo uploaded.
-            </p>
-          )}
-
+          <EvidencePhoto report={report} />
         </div>
 
       </section>
 
-      <section className="panel">
-
-        <h2>
-          Report Timeline
-        </h2>
-
-        <div className="timeline">
-
-          <div className="timeline-item active">
-            <span>01</span>
-            <strong>
-              Reported
-            </strong>
-            <small>
-              {report.date} {report.time}
-            </small>
-          </div>
-
-          <div
-            className={
-              report.inspectedAt ||
-              report.status !== "New"
-                ? "timeline-item active"
-                : "timeline-item"
-            }
-          >
-            <span>02</span>
-            <strong>
-              Inspection Review
-            </strong>
-
-            {report.inspectedBy && (
-              <small>
-                Inspector: {report.inspectedBy}
-              </small>
-            )}
-
-            {!report.inspectedBy && (
-              <small>
-                Inspector: Not assigned
-              </small>
-            )}
-
-            {report.inspectedAt && (
-              <small>
-                {new Date(
-                  report.inspectedAt
-                ).toLocaleString()}
-              </small>
-            )}
-
-            {!report.inspectedAt && (
-              <small>
-                Review date: Pending
-              </small>
-            )}
-
-            {report.verificationNotes && (
-              <small className="timeline-note">
-                {report.verificationNotes}
-              </small>
-            )}
-
-            {!report.verificationNotes && (
-              <small className="timeline-note">
-                Inspector notes: Pending review
-              </small>
-            )}
-
-            {report.status === "Rejected" && (
-              <small>
-                Decision: Rejected
-              </small>
-            )}
-
-            {report.status ===
-              "Needs Information" && (
-              <small>
-                Decision: More information requested
-              </small>
-            )}
-          </div>
-
-          <div
-            className={
-              report.status === "Verified" ||
-              report.status === "Ongoing" ||
-              report.status === "Closed"
-                ? "timeline-item active"
-                : "timeline-item"
-            }
-          >
-            <span>03</span>
-            <strong>
-              Verified
-            </strong>
-
-            {report.verifiedBy && (
-              <small>
-                By: {report.verifiedBy}
-              </small>
-            )}
-
-            {report.verifiedAt && (
-              <small>
-                {new Date(
-                  report.verifiedAt
-                ).toLocaleString()}
-              </small>
-            )}
-
-            {!report.verifiedBy && (
-              <small>
-                Verified by: Pending
-              </small>
-            )}
-
-            {!report.verifiedAt && (
-              <small>
-                Verification date: Pending
-              </small>
-            )}
-
-            {report.status !== "Verified" &&
-              report.status !== "Ongoing" &&
-              report.status !== "Closed" && (
-              <small>
-                Verification details will appear
-                after inspector review.
-              </small>
-            )}
-          </div>
-
-          <div
-            className={
-              report.status === "Ongoing" ||
-              report.status === "Closed"
-                ? "timeline-item active"
-                : "timeline-item"
-            }
-          >
-            <span>04</span>
-            <strong>
-              Assigned / In Progress
-            </strong>
-
-            {report.status === "Ongoing" ||
-            report.status === "Closed" ? (
-              <small>
-                Repair work is in progress.
-              </small>
-            ) : (
-              <small>
-                Assignment details: Pending
-              </small>
-            )}
-          </div>
-
-          <div
-            className={
-              report.status === "Closed"
-                ? "timeline-item active"
-                : "timeline-item"
-            }
-          >
-            <span>05</span>
-            <strong>
-              Completed
-            </strong>
-          </div>
-
-        </div>
-
-      </section>
+      <ReportTimeline report={report} />
 
     </main>
   );

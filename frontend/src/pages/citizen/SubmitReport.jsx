@@ -1,5 +1,7 @@
 ﻿import { useState } from "react";
 
+const MAX_EVIDENCE_SIZE = 5 * 1024 * 1024;
+const MAX_EVIDENCE_COUNT = 5;
 
 export default function SubmitReport({
   setActive,
@@ -11,11 +13,16 @@ export default function SubmitReport({
       category: "Road Damage",
       description: "",
       location: "",
-      evidence: "",
+      evidence: [],
     });
+  const [evidenceLoading, setEvidenceLoading] = useState(false);
 
   function handleSubmit(e) {
     e.preventDefault();
+
+    if (evidenceLoading) {
+      return;
+    }
 
     if (
       !form.description ||
@@ -78,6 +85,66 @@ export default function SubmitReport({
     };
 
     onSubmit(report);
+  }
+
+  function handleEvidenceChange(e) {
+    const files = Array.from(e.target.files || []);
+    e.target.value = "";
+    if (!files.length) return;
+
+    if (form.evidence.length + files.length > MAX_EVIDENCE_COUNT) {
+      alert(`A report can include up to ${MAX_EVIDENCE_COUNT} photos.`);
+      return;
+    }
+
+    const invalidType = files.find((file) => !["image/png", "image/jpeg"].includes(file.type));
+    if (invalidType) {
+      alert("Please choose PNG or JPEG images.");
+      return;
+    }
+
+    const oversizedFile = files.find((file) => file.size > MAX_EVIDENCE_SIZE);
+    if (oversizedFile) {
+      alert("Each photo must be 5 MB or smaller.");
+      return;
+    }
+
+    setEvidenceLoading(true);
+    Promise.all(files.map((file) => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result !== "string") {
+          reject(new Error(`Could not read ${file.name}.`));
+          return;
+        }
+        resolve({
+          filename: file.name,
+          contentType: file.type,
+          dataUrl: reader.result,
+        });
+      };
+      reader.onerror = () => reject(new Error(`Could not read ${file.name}.`));
+      reader.readAsDataURL(file);
+    })))
+      .then((evidence) => {
+        setForm((previousForm) => ({
+          ...previousForm,
+          evidence: [...previousForm.evidence, ...evidence],
+        }));
+      })
+      .catch((error) => {
+        alert(error.message);
+      })
+      .finally(() => {
+        setEvidenceLoading(false);
+      });
+  }
+
+  function removeEvidence(indexToRemove) {
+    setForm((previousForm) => ({
+      ...previousForm,
+      evidence: previousForm.evidence.filter((_, index) => index !== indexToRemove),
+    }));
   }
 
   return (
@@ -194,26 +261,53 @@ export default function SubmitReport({
             />
           </label>
 
-          <label>
+          <label className="evidence-upload-label">
             Photo Evidence
 
             <input
+              className="evidence-file-input"
               type="file"
               accept="image/png,image/jpeg"
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  evidence:
-                    e.target.files?.[0]
-                      ?.name || "",
-                })
-              }
+              multiple
+              disabled={evidenceLoading || form.evidence.length >= MAX_EVIDENCE_COUNT}
+              onChange={handleEvidenceChange}
             />
+            <small>
+              Select up to {MAX_EVIDENCE_COUNT} PNG or JPEG photos. Each photo must be 5 MB or smaller
+              ({form.evidence.length}/{MAX_EVIDENCE_COUNT} selected).
+            </small>
           </label>
+
+          {evidenceLoading && (
+            <p role="status">Loading selected photo...</p>
+          )}
+
+          {form.evidence.length > 0 && (
+            <div className="evidence-gallery evidence-preview">
+              {form.evidence.map((photo, index) => (
+                <figure className="evidence-image" key={`${photo.filename}-${index}`}>
+                  <img src={photo.dataUrl} alt={`Selected evidence ${index + 1}`} />
+                  <figcaption>
+                    {photo.filename}
+                    <button
+                      className="remove-evidence"
+                      type="button"
+                      onClick={() => removeEvidence(index)}
+                      disabled={evidenceLoading}
+                      aria-label={`Remove ${photo.filename}`}
+                    >
+                      Remove
+                    </button>
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+          )}
 
           <button
             className="gold"
             type="submit"
+            disabled={evidenceLoading}
           >
             Submit Report
           </button>
@@ -301,5 +395,3 @@ export default function SubmitReport({
 /* =========================================================
    MY REPORTS
 ========================================================= */
-
-

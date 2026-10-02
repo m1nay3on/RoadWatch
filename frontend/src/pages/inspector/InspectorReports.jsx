@@ -198,7 +198,9 @@ function ReportTable({
               )}
 
               <td>
-                {showInspector && report.verifiedAt
+                {dateLabel === "Date Closed" && report.closedAt
+                  ? new Date(report.closedAt).toLocaleDateString()
+                  : showInspector && report.verifiedAt
                   ? new Date(
                       report.verifiedAt
                     ).toLocaleDateString()

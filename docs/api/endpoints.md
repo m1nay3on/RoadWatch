@@ -46,10 +46,21 @@ from user responses. User lists are currently capped at 1,000 records.
 | GET | `/reports/:id/photos` | Authenticated; Citizens see only their own | `200 [photo, ...]` |
 
 Report creation accepts `category`, `location`, `description`, and optional
-`evidence`. Status updates accept `status`; inspection statuses also require
+`evidence`, an array of up to five photo objects. Each photo contains
+`filename`, `contentType` (`image/png` or `image/jpeg`), and a base64 `dataUrl`;
+each image is limited to 5 MB. Older filename-only and single-photo evidence
+remains supported.
+`GET /reports/:id/photos` returns stored photo data for display.
+
+Status updates accept `status`; inspection statuses also require
 `verificationNotes` and may include `priority` (`Low`, `Medium`, or `High`).
 Closing a report may include `completionNotes`. Status transitions are enforced
-by role.
+by role. An Administrator can move a Verified report to
+`Endorsed to Engineering Office` after generating its inspection report. This transition records
+`endorsedAt`, the administrator's name in `endorsedBy` and email in
+`endorsedByEmail`, `endorsedTo`, and an optional
+`endorsementReference` (up to 200 characters). Endorsed reports can then be
+closed by an Administrator after completion is confirmed.
 
 ## Assignments
 

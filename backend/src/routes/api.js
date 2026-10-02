@@ -285,6 +285,14 @@ router.post('/reports', requireAuth, requireRole('Citizen'), async (req, res, ne
     const user = userDocs.find((candidate) => getEmail(plain(candidate)) === req.auth.email);
     const userData = safeUser(user);
     const createdAt = new Date();
+    const evidencePhotos = Array.isArray(input.evidence)
+      ? input.evidence
+      : input.evidence && typeof input.evidence === 'object'
+        ? [input.evidence]
+        : [];
+    const evidenceLabel = typeof input.evidence === 'string'
+      ? input.evidence
+      : evidencePhotos.map((photo) => photo.filename).join(', ');
     const report = await Report.create({
       id,
       report_id: id,
@@ -294,7 +302,7 @@ router.post('/reports', requireAuth, requireRole('Citizen'), async (req, res, ne
       category: input.category,
       location: input.location,
       description: input.description,
-      evidence: input.evidence,
+      evidence: evidenceLabel,
       date: createdAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
       time: createdAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
       priority: 'Medium',
@@ -313,13 +321,23 @@ router.post('/reports', requireAuth, requireRole('Citizen'), async (req, res, ne
       changed_at: new Date(),
       updatedByEmail: req.auth.email,
     });
-    if (input.evidence) {
+    if (typeof input.evidence === 'string' && input.evidence) {
       await ReportPhoto.create({
         report_id: id,
-        filename: String(input.evidence),
+        filename: input.evidence,
         uploaded_by_email: req.auth.email,
         created_at: new Date(),
       });
+    }
+    if (evidencePhotos.length) {
+      await ReportPhoto.insertMany(evidencePhotos.map((photo) => ({
+        report_id: id,
+        filename: photo.filename,
+        content_type: photo.contentType,
+        data_url: photo.dataUrl,
+        uploaded_by_email: req.auth.email,
+        created_at: new Date(),
+      })));
     }
     return res.status(201).json(publicReport(report));
   } catch (error) {
@@ -378,6 +396,32 @@ router.patch('/reports/:id/status', requireAuth, requireRole('Field Inspector', 
       if (req.auth.role === 'Field Inspector' && assignment.assigned_to_email !== req.auth.email) {
         return res.status(403).json({ message: 'Only the assigned inspector can update this repair.' });
       }
+    }
+
+    if (status === 'Endorsed to Engineering Office') {
+      if (req.auth.role !== 'Administrator') {
+        return res.status(403).json({ message: 'Only an administrator can endorse a report.' });
+      }
+      if (currentReport.status !== 'Verified') {
+        return res.status(409).json({ message: 'Only verified reports can be endorsed.' });
+      }
+      if (typeof body.reportGeneratedAt !== 'string' || !Number.isFinite(Date.parse(body.reportGeneratedAt))) {
+        return res.status(400).json({ message: 'Generate the inspection report before endorsement.' });
+      }
+      if (body.endorsementReference !== undefined && typeof body.endorsementReference !== 'string') {
+        return res.status(400).json({ message: 'Endorsement reference must be text.' });
+      }
+      const endorsementReference = (body.endorsementReference || '').trim();
+      if (endorsementReference.length > 200) {
+        return res.status(400).json({ message: 'Endorsement reference must be at most 200 characters.' });
+      }
+      const administratorData = plain(actor);
+      const administratorName = `${administratorData.firstName || ''} ${administratorData.lastName || ''}`.trim();
+      update.endorsedTo = 'Engineering Office';
+      update.endorsedAt = now;
+      update.endorsedBy = administratorName || req.auth.email;
+      update.endorsedByEmail = req.auth.email;
+      update.endorsementReference = endorsementReference;
     }
 
     if (status === 'Closed') {

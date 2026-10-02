@@ -29,6 +29,7 @@ app.use((req, res, next) => {
   });
   return next();
 });
+app.use('/api/reports', express.json({ limit: '36mb' }));
 app.use(express.json());
 
 app.get('/api/health', (req, res) => {
