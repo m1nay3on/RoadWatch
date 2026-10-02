@@ -21,7 +21,12 @@ import Profile from "./pages/Profile";
 export default function App() {
 
   const [active, setActive] =
-    useState("Dashboard");
+    useState(() => {
+      const savedEmail = localStorage.getItem("email");
+      return savedEmail
+        ? sessionStorage.getItem(`roadwatch.activePage:${savedEmail}`) || "Dashboard"
+        : "Dashboard";
+    });
 
   const [sidebarCollapsed, setSidebarCollapsed] =
     useState(false);
@@ -68,6 +73,12 @@ export default function App() {
     showMinorModal,
     setShowMinorModal,
   ] = useState(false);
+
+  useEffect(() => {
+    if (authenticated && email) {
+      sessionStorage.setItem(`roadwatch.activePage:${email}`, active);
+    }
+  }, [active, authenticated, email]);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -201,6 +212,10 @@ export default function App() {
   ===================================================== */
 
   function handleLogout() {
+    if (email) {
+      sessionStorage.removeItem(`roadwatch.activePage:${email}`);
+    }
+
     localStorage.removeItem(
       "role"
     );
