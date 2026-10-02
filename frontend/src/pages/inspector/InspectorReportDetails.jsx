@@ -1,4 +1,6 @@
-﻿import { useState } from "react";
+import { useState } from "react";
+import EvidencePhoto from "../../components/EvidencePhoto";
+import ReportTimeline from "../../components/ReportTimeline";
 
 
 export default function InspectorReportDetails({
@@ -15,7 +17,6 @@ export default function InspectorReportDetails({
     useState(
       report?.priority || "Medium"
     );
-
   if (!report) {
     return (
       <main className="main">
@@ -93,12 +94,14 @@ export default function InspectorReportDetails({
       <button
         className="back-btn"
         onClick={() =>
-          setActive(
-            "Verification Queue"
-          )
+          setActive(report.status === "Closed"
+            ? "Inspector Reports"
+            : "Verification Queue")
         }
       >
-        ← Back to Verification Queue
+        ← Back to {report.status === "Closed"
+          ? "Inspector Reports"
+          : "Verification Queue"}
       </button>
 
       <div className="detail-page-header">
@@ -138,12 +141,8 @@ export default function InspectorReportDetails({
           </h2>
 
           <div className="large-evidence">
-
             {report.evidence ? (
-              <p>
-                Uploaded evidence:{" "}
-                {report.evidence}
-              </p>
+              <EvidencePhoto report={report} clickable />
             ) : (
               <div>
 
@@ -181,14 +180,6 @@ export default function InspectorReportDetails({
               </strong>
 
               {report.category}
-            </p>
-
-            <p>
-              <strong>
-                Priority:
-              </strong>
-
-              {report.priority}
             </p>
 
             <p>
@@ -339,7 +330,7 @@ export default function InspectorReportDetails({
           </p>
 
         </section>
-      ) : (
+      ) : report.status !== "Closed" ? (
         <>
           <section className="panel">
 
@@ -432,6 +423,13 @@ export default function InspectorReportDetails({
 
           </section>
         </>
+      ) : null}
+
+      {report.status === "Closed" && (
+        <ReportTimeline
+          report={report}
+          title="Status Timeline"
+        />
       )}
 
     </main>

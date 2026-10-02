@@ -18,10 +18,39 @@ import AdminManagement from "./pages/administrator/AdminManagement";
 import AdminCompletion from "./pages/administrator/AdminCompletion";
 import Profile from "./pages/Profile";
 
+const ACTIVE_PAGE_STORAGE_KEY = "roadwatch.activePage";
+
+function getRestoredPage(role, reports) {
+  const savedPage = sessionStorage.getItem(ACTIVE_PAGE_STORAGE_KEY);
+  if (!savedPage) return "Dashboard";
+
+  const [page, reportId] = savedPage.split(":");
+  const rolePages = {
+    Citizen: ["Dashboard", "Submit Report", "My Reports", "Report Details", "Profile"],
+    "Field Inspector": ["Dashboard", "Verification Queue", "Inspector Reports", "Inspector Details", "Profile"],
+    Administrator: ["Dashboard", "Inspected Reports", "Report Completion", "Administrator Tools", "Profile"],
+  };
+  if (!rolePages[role]?.includes(page)) return "Dashboard";
+
+  if (
+    (page === "Report Details" || page === "Inspector Details") &&
+    (!reportId || !reports.some((report) => report.id === reportId))
+  ) {
+    return "Dashboard";
+  }
+
+  return savedPage;
+}
+
 export default function App() {
 
   const [active, setActive] =
-    useState("Dashboard");
+    useState(() => {
+      const savedEmail = localStorage.getItem("email");
+      return savedEmail
+        ? sessionStorage.getItem(`roadwatch.activePage:${savedEmail}`) || "Dashboard"
+        : "Dashboard";
+    });
 
   const [sidebarCollapsed, setSidebarCollapsed] =
     useState(false);
@@ -70,6 +99,12 @@ export default function App() {
   ] = useState(false);
 
   useEffect(() => {
+    if (authenticated && email) {
+      sessionStorage.setItem(`roadwatch.activePage:${email}`, active);
+    }
+  }, [active, authenticated, email]);
+
+  useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
       setAuthLoading(false);
@@ -90,6 +125,7 @@ export default function App() {
         setEmail(user.email);
         setReports(loadedReports);
         setUsers(loadedUsers);
+        setActive(getRestoredPage(user.role, loadedReports));
         setAuthenticated(true);
       } catch {
         localStorage.removeItem("token");
@@ -106,6 +142,12 @@ export default function App() {
       activeRequest = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (authenticated) {
+      sessionStorage.setItem(ACTIVE_PAGE_STORAGE_KEY, active);
+    }
+  }, [active, authenticated]);
 
   /* =====================================================
      LOGIN
@@ -131,6 +173,7 @@ export default function App() {
       setPassword("");
       setAuthenticated(true);
       setActive("Dashboard");
+      sessionStorage.removeItem(ACTIVE_PAGE_STORAGE_KEY);
       setModal("Login successful.");
     } catch (error) {
       alert(error.message);
@@ -180,8 +223,10 @@ export default function App() {
       setReports((previousReports) => previousReports.map((report) => (
         report.id === reportId ? updatedReport : report
       )));
+      return updatedReport;
     } catch (error) {
       alert(error.message);
+      return null;
     }
   }
 
@@ -201,6 +246,10 @@ export default function App() {
   ===================================================== */
 
   function handleLogout() {
+    if (email) {
+      sessionStorage.removeItem(`roadwatch.activePage:${email}`);
+    }
+
     localStorage.removeItem(
       "role"
     );
@@ -214,6 +263,7 @@ export default function App() {
     );
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    sessionStorage.removeItem(ACTIVE_PAGE_STORAGE_KEY);
 
     setRole("");
     setEmail("");
@@ -522,6 +572,7 @@ export default function App() {
             reports={
               reports
             }
+            administrator={currentUser}
             onUpdateReport={
               updateReportStatus
             }

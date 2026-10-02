@@ -1,4 +1,5 @@
 ﻿import logo from "../../assets/roadwatch-logo.png";
+import { getLatestReports } from "../../utils/reportSort";
 
 
 export default function Dashboard({
@@ -12,6 +13,7 @@ export default function Dashboard({
         report.reporterEmail ===
         user.email
     );
+  const recentReports = getLatestReports(citizenReports);
 
   const ongoing =
     citizenReports.filter(
@@ -168,9 +170,7 @@ export default function Dashboard({
 
               <tbody>
 
-                {citizenReports
-                  .slice(0, 5)
-                  .map((report) => (
+                {recentReports.map((report) => (
                     <tr key={report.id}>
 
                       <td>
@@ -211,7 +211,7 @@ export default function Dashboard({
                       </td>
 
                     </tr>
-                  ))}
+                ))}
 
               </tbody>
 

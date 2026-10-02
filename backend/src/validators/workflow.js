@@ -2,6 +2,8 @@ const roles = ['Citizen', 'Field Inspector', 'Administrator'];
 const priorities = ['Low', 'Medium', 'High'];
 const addressFields = ['houseNumber', 'street', 'barangay', 'city'];
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const maxEvidenceBytes = 5 * 1024 * 1024;
+const maxEvidenceCount = 5;
 
 const transitions = {
   'Field Inspector': {
@@ -11,7 +13,8 @@ const transitions = {
     Verified: ['Ongoing'],
   },
   Administrator: {
-    Verified: ['Ongoing', 'Closed'],
+    Verified: ['Endorsed to Engineering Office'],
+    'Endorsed to Engineering Office': ['Closed'],
     Ongoing: ['Closed'],
   },
 };
@@ -140,21 +143,67 @@ function validateReportInput(input) {
     typeof input.category !== 'string' ||
     typeof input.location !== 'string' ||
     typeof input.description !== 'string' ||
-    (input.evidence !== undefined && typeof input.evidence !== 'string')
+    (
+      input.evidence !== undefined &&
+      typeof input.evidence !== 'string' &&
+      (!input.evidence || typeof input.evidence !== 'object')
+    )
   ) {
-    return { error: 'Category, location, description, and evidence filename must be text.' };
+    return { error: 'Category, location, and description must be text; evidence must have a valid type.' };
   }
 
   const category = input.category.trim();
   const location = input.location.trim();
   const description = input.description.trim();
-  const evidence = (input.evidence || '').trim();
+  let evidence = typeof input.evidence === 'string' ? input.evidence.trim() : '';
 
   if (!category || !location || !description) {
     return { error: 'Category, location, and description are required.' };
   }
   if (category.length > 100 || location.length > 300 || description.length > 5000 || evidence.length > 255) {
     return { error: 'Category, location, description, or evidence filename exceeds its allowed length.' };
+  }
+
+  if (input.evidence && typeof input.evidence === 'object') {
+    const photos = Array.isArray(input.evidence) ? input.evidence : [input.evidence];
+    if (photos.length > maxEvidenceCount) {
+      return { error: `A report can include at most ${maxEvidenceCount} photos.` };
+    }
+
+    const validatedPhotos = [];
+    for (const photo of photos) {
+      const { filename, contentType, dataUrl } = photo || {};
+      const normalizedFilename = typeof filename === 'string' ? filename.trim() : '';
+      const dataUrlMatch = typeof dataUrl === 'string'
+        ? dataUrl.match(/^data:(image\/(?:png|jpeg));base64,([A-Za-z0-9+/]+={0,2})$/)
+        : null;
+      if (
+        !normalizedFilename ||
+        normalizedFilename.length > 255 ||
+        !['image/png', 'image/jpeg'].includes(contentType) ||
+        !dataUrlMatch ||
+        dataUrlMatch[1] !== contentType
+      ) {
+        return { error: 'Each evidence photo must be a PNG or JPEG image with a valid filename.' };
+      }
+
+      const encodedImage = dataUrlMatch[2];
+      const imageBytes = Buffer.from(encodedImage, 'base64');
+      const hasExpectedSignature = contentType === 'image/png'
+        ? imageBytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+        : imageBytes[0] === 0xff && imageBytes[1] === 0xd8 && imageBytes[2] === 0xff;
+      if (
+        imageBytes.length > maxEvidenceBytes ||
+        imageBytes.length === 0 ||
+        imageBytes.toString('base64') !== encodedImage ||
+        !hasExpectedSignature
+      ) {
+        return { error: 'Each evidence photo must be a valid PNG or JPEG no larger than 5 MB.' };
+      }
+
+      validatedPhotos.push({ filename: normalizedFilename, contentType, dataUrl });
+    }
+    evidence = Array.isArray(input.evidence) ? validatedPhotos : validatedPhotos[0];
   }
 
   return { value: { category, location, description, evidence } };

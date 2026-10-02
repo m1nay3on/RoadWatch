@@ -62,16 +62,16 @@ as the current completion screen permits, or after Ongoing repair work.
 
 `GET /api/health` is public. All other protected routes require a bearer token.
 
-## Frontend Follow-Up
+## Administrator Workflow
 
-These items require frontend work and were intentionally left untouched:
-
-- Add an Administrator screen/control that calls `POST /api/assignments`, then
-  give the assigned inspector a control to start repair work by changing the
-  status to Ongoing.
-- The current report form sends only the selected photo's filename. The backend
-  stores filename metadata in `report_photos`; actual image bytes are not
-  uploaded or stored.
+- The Administrator can generate the inspection report for a Verified case,
+  endorse it to the Engineering Office, and record the endorsement date and
+  optional reference. The Administrator closes the case after completion is
+  confirmed. The Engineering Office is an external recipient, not an additional
+  RoadWatch actor.
+- Photo evidence now uploads up to five PNG/JPEG images (up to 5 MB each) to `report_photos`.
+  Report details load and display stored evidence for citizens and inspectors;
+  older filename-only uploads remain visible as metadata.
 - The current UI has no report-edit/delete flow. Add one only if those actions
   are required; the current backend workflow supports report creation,
   inspection, assignment, status history, and closure.
