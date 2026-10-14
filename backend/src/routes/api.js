@@ -3,6 +3,7 @@ const express = require('express');
 const { requireAuth, requireRole, signToken } = require('../middleware/auth');
 const { Assignment, Category, Report, ReportPhoto, StatusLog, User, Verification } = require('../models');
 const { hashPassword } = require('../services/seedDefaults');
+const { sendReportStatusEmail } = require('../services/statusEmail');
 const { applyListQuery } = require('../utils/listQuery');
 const {
   canTransition,
@@ -15,6 +16,31 @@ const {
 const router = express.Router();
 const passwordFields = ['password', 'passwordHash', 'password_hash', 'passwordHashValue'];
 const inspectionStatuses = ['Verified', 'Needs Information', 'Rejected'];
+const citizenDeletableStatuses = ['New', 'Needs Information'];
+let smtpNotConfiguredWarningLogged = false;
+
+async function notifyReportOwner(report, status, notes, requestId) {
+  try {
+    const result = await sendReportStatusEmail(report, status, notes);
+    if (!result.sent && result.reason === 'smtp_not_configured' && !smtpNotConfiguredWarningLogged) {
+      smtpNotConfiguredWarningLogged = true;
+      console.warn(JSON.stringify({
+        level: 'warn',
+        requestId,
+        event: 'report_status_email_not_configured',
+      }));
+    }
+  } catch (error) {
+    console.error(JSON.stringify({
+      level: 'error',
+      requestId,
+      event: 'report_status_email_failed',
+      reportId: report.id,
+      errorName: error.name,
+      errorCode: error.code,
+    }));
+  }
+}
 
 function camelize(value) {
   if (Array.isArray(value)) return value.map(camelize);
@@ -269,6 +295,35 @@ router.get('/reports/:id', requireAuth, async (req, res, next) => {
   }
 });
 
+router.delete('/reports/:id', requireAuth, requireRole('Citizen'), async (req, res, next) => {
+  try {
+    const report = await Report.findOne(reportQueryById(req.params.id));
+    if (!report || !await canAccessReport(req, req.params.id)) {
+      return res.status(404).json({ message: 'Report not found.' });
+    }
+
+    const reportData = publicReport(report);
+    if (!citizenDeletableStatuses.includes(reportData.status)) {
+      return res.status(409).json({
+        message: 'Only reports with New or Needs Information status can be deleted.',
+      });
+    }
+
+    const reportId = reportData.id;
+    await Promise.all([
+      ReportPhoto.deleteMany({ report_id: reportId }),
+      StatusLog.deleteMany({ report_id: reportId }),
+      Verification.deleteMany({ report_id: reportId }),
+      Assignment.deleteMany({ report_id: reportId }),
+    ]);
+    await report.deleteOne();
+
+    return res.json({ message: 'Report deleted successfully.', id: reportId });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 router.post('/reports', requireAuth, requireRole('Citizen'), async (req, res, next) => {
   try {
     const validation = validateReportInput(req.body);
@@ -384,6 +439,15 @@ router.patch('/reports/:id/status', requireAuth, requireRole('Field Inspector', 
       update.inspectedBy = `${inspectorData.firstName || ''} ${inspectorData.lastName || ''}`.trim();
       update.inspectedByEmail = req.auth.email;
       update.inspectedAt = now;
+      update.conversation = [
+        ...(Array.isArray(currentReport.conversation) ? currentReport.conversation : []),
+        {
+          senderRole: 'Field Inspector',
+          senderName: update.inspectedBy || req.auth.email,
+          message: notes,
+          createdAt: now,
+        },
+      ];
       if (status === 'Verified') {
         update.verifiedBy = update.inspectedBy;
         update.verifiedAt = now;
@@ -478,7 +542,86 @@ router.patch('/reports/:id/status', requireAuth, requireRole('Field Inspector', 
         },
       );
     }
-    return res.json(publicReport(report));
+    const reportResponse = publicReport(report);
+    await notifyReportOwner(
+      reportResponse,
+      status,
+      update.verificationNotes || update.completionNotes || '',
+      req.requestId,
+    );
+    return res.json(reportResponse);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post('/reports/:id/conversation', requireAuth, requireRole('Citizen'), async (req, res, next) => {
+  try {
+    const report = await Report.findOne(reportQueryById(req.params.id));
+    if (!report || !await canAccessReport(req, req.params.id)) {
+      return res.status(404).json({ message: 'Report not found.' });
+    }
+
+    const currentReport = plain(report);
+    if (currentReport.status !== 'Needs Information') {
+      return res.status(409).json({ message: 'A response can only be submitted when more information is requested.' });
+    }
+
+    const message = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
+    if (!message || message.length > 2000) {
+      return res.status(400).json({ message: 'Your response is required and must be at most 2000 characters.' });
+    }
+
+    const actor = await User.findOne({ email: req.auth.email });
+    if (!actor) return res.status(401).json({ message: 'Account no longer exists.' });
+
+    const now = new Date();
+    const actorData = plain(actor);
+    const previousConversation = Array.isArray(currentReport.conversation)
+      ? currentReport.conversation
+      : [];
+    const conversation = previousConversation.length || !currentReport.verificationNotes
+      ? previousConversation
+      : [{
+          senderRole: 'Field Inspector',
+          senderName: currentReport.inspectedBy || 'Field Inspector',
+          message: currentReport.verificationNotes,
+          createdAt: currentReport.inspectedAt || now,
+        }];
+    conversation.push(
+      {
+        senderRole: 'Citizen',
+        senderName: `${actorData.firstName || ''} ${actorData.lastName || ''}`.trim() || req.auth.email,
+        message,
+        createdAt: now,
+      },
+    );
+    report.set({
+      conversation,
+      citizenResponse: message,
+      citizenResponseAt: now,
+      status: 'Under Review',
+      updatedAt: now,
+    });
+    await report.save();
+    await StatusLog.create({
+      report_id: req.params.id,
+      previousStatus: currentReport.status,
+      status: 'Under Review',
+      details: { citizenResponse: message },
+      changed_by: actor._id,
+      changed_at: now,
+      updatedByEmail: req.auth.email,
+    });
+
+    const reportResponse = publicReport(report);
+    await notifyReportOwner(
+      reportResponse,
+      'Under Review',
+      '',
+      req.requestId,
+    );
+    return res.json(reportResponse);
   } catch (error) {
     return next(error);
   }

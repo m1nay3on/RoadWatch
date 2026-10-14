@@ -7,7 +7,7 @@ potholes, damaged streetlights, drainage problems, and public facility damage.
 The project contains:
 
 - A React and Vite frontend
-- An Express backend prepared for MongoDB
+- An Express backend connected to MongoDB through Mongoose
 - Role-based workflows for citizens, field inspectors, and administrators
 - Inspection timelines and report status tracking
 - Browser print-to-PDF report generation
@@ -18,7 +18,7 @@ The project contains:
 
 - Create an account and log in
 - Submit infrastructure damage reports
-- Add issue descriptions, locations, and photo evidence filenames
+- Add issue descriptions, locations, and up to five PNG/JPEG evidence photos
 - View submitted reports and their current statuses
 - Follow the report timeline
 - View inspector names, review dates, notes, and verification details
@@ -41,25 +41,23 @@ The project contains:
 - Create Citizen, Field Inspector, and Administrator accounts
 - Manage user account information
 - View inspected reports
-- Generate an individual inspection report as a PDF
-- Generate a date-range inspection report as a PDF
-- Mark verified or ongoing reports as closed
-- Track report completion status
+- Generate inspection reports as PDFs for one or more verified reports
+- Generate and endorse a verified report to the Engineering Office
+- Confirm completion and close endorsed reports
+- Track report status history and completion records
 
 ## Report workflow
 
-Reports generally follow this workflow:
+Reports follow role-specific workflow paths:
 
 ```text
 New
   ↓
 Under Review
   ↓
-Verified
-  ↓
-Ongoing
-  ↓
-Closed
+Verified ──► Ongoing ──► Closed
+    │
+    └──────► Endorsed to Engineering Office ──► Closed
 ```
 
 Alternative outcomes include:
@@ -68,6 +66,10 @@ Alternative outcomes include:
 New → Rejected
 New → Needs Information → Under Review
 ```
+
+Inspectors can move a verified report to Ongoing after it has been assigned.
+Administrators can instead endorse a verified report to the Engineering Office;
+endorsed cases are closed after completion is confirmed.
 
 ## Technology stack
 
@@ -93,7 +95,7 @@ New → Needs Information → Under Review
 
 Install the following:
 
-- Node.js 18 or newer
+- Node.js 20.19+ or 22.12+
 - npm
 - MongoDB running locally or a MongoDB connection string
 
@@ -234,24 +236,26 @@ npm run preview
 Administrators can generate:
 
 - Individual inspection reports
-- Inspection reports for a selected date range
 
-The application uses the browser print dialog. To save a report:
+The application uses the browser print dialog. For endorsements, the report
+status is updated only after the administrator confirms the document was
+printed or saved. To save a report:
 
-1. Open an inspected report or select a date range.
+1. Open an inspected report or select verified reports for endorsement.
 2. Click the PDF generation button.
 3. Select **Save as PDF** in the browser print dialog.
+4. Confirm the document was printed or saved to complete endorsement.
 
 ## Current data storage
 
-The current frontend prototype stores users in browser `localStorage` and
-keeps report state in the running application. The backend currently provides
-the Express server and health endpoint and is prepared for MongoDB
-integration.
+Users, reports, categories, assignments, photo evidence, verifications, and
+status logs are persisted in MongoDB. The frontend stores the authentication
+token and basic session details in browser storage, and loads application
+records from the backend API.
 
-Refreshing the application may reset in-memory report changes. Persistent
-production storage should be connected through backend API routes and
-MongoDB models.
+See [System Development](docs/system-development.md) for an overview of the
+architecture, development approach, role workflows, validation, and current
+scope.
 
 ## Validation
 
@@ -273,5 +277,5 @@ npm run build
 
 ## Additional documentation
 
-See [`docs/how-to-run.md`](docs/how-to-run.md) for the existing detailed
-
+See [How to Run](docs/how-to-run.md), the [Backend API reference](docs/api/endpoints.md),
+and [System Development](docs/system-development.md) for more information.

@@ -107,6 +107,31 @@ export default function App() {
   }, [active, authenticated, email]);
 
   useEffect(() => {
+    if (!authenticated) return undefined;
+
+    let activeRequest = false;
+    async function refreshReports() {
+      if (activeRequest || document.visibilityState === "hidden") return;
+      activeRequest = true;
+      try {
+        const latestReports = await api.get("/reports");
+        setReports(latestReports);
+      } catch (error) {
+        setFeedback(error.message);
+      } finally {
+        activeRequest = false;
+      }
+    }
+
+    const intervalId = window.setInterval(refreshReports, 10000);
+    window.addEventListener("focus", refreshReports);
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", refreshReports);
+    };
+  }, [authenticated]);
+
+  useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
       setAuthLoading(false);
@@ -233,6 +258,41 @@ export default function App() {
     } catch (error) {
       setFeedback(error.message);
       return null;
+    }
+  }
+
+  async function handleCitizenResubmit(reportId, responseText) {
+    const trimmedResponse = responseText.trim();
+    if (!trimmedResponse) {
+      setFeedback("Please provide the additional information before resubmitting.");
+      return false;
+    }
+
+    try {
+      const updatedReport = await api.post(
+        `/reports/${encodeURIComponent(reportId)}/conversation`,
+        { message: trimmedResponse },
+      );
+      setReports((previousReports) => previousReports.map((report) => (
+        report.id === reportId ? updatedReport : report
+      )));
+      setFeedback("");
+      return true;
+    } catch (error) {
+      setFeedback(error.message);
+      return false;
+    }
+  }
+
+  async function handleCitizenDeleteReport(reportId) {
+    try {
+      await api.delete(`/reports/${encodeURIComponent(reportId)}`);
+      setReports((previousReports) => previousReports.filter((report) => report.id !== reportId));
+      setFeedback("");
+      return true;
+    } catch (error) {
+      setFeedback(error.message);
+      return false;
     }
   }
 
@@ -493,6 +553,9 @@ export default function App() {
             user={
               currentUser
             }
+            onDeleteReport={
+              handleCitizenDeleteReport
+            }
           />
         )}
 
@@ -508,6 +571,9 @@ export default function App() {
             }
             report={
               selectedReport
+            }
+            onResubmitReport={
+              handleCitizenResubmit
             }
           />
         )}

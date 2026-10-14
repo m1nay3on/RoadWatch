@@ -18,7 +18,7 @@ export default function Dashboard({
   const ongoing =
     citizenReports.filter(
       (report) =>
-        report.status === "Ongoing"
+        ["Ongoing", "Endorsed to Engineering Office"].includes(report.status)
     ).length;
 
   const closed =
