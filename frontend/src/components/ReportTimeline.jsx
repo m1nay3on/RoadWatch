@@ -31,6 +31,9 @@ export default function ReportTimeline({
           text: report.verificationNotes || "Inspector notes: Pending review",
           className: "timeline-note",
         },
+        ...(report.citizenResponse
+          ? [{ text: `Citizen response: ${report.citizenResponse}` }]
+          : []),
         ...(report.status === "Rejected"
           ? [{ text: "Decision: Rejected" }]
           : report.status === "Needs Information"

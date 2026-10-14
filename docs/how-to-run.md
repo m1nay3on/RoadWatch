@@ -4,7 +4,7 @@
 
 Install the following before running the project:
 
-- Node.js 18 or newer
+- Node.js 20.19+ or 22.12+
 - npm
 - MongoDB running locally, or a MongoDB connection string
 
@@ -35,6 +35,24 @@ Copy-Item backend/.env.example backend/.env
 
 Edit `backend/.env` if MongoDB uses another URI. Set `AUTH_TOKEN_SECRET` to a
 long random value when running outside local development. Do not commit `.env`.
+
+To send citizens an email after a report status changes, configure the SMTP
+settings in `backend/.env` using credentials from your email provider:
+
+```env
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your-smtp-username
+SMTP_PASS=your-smtp-password
+SMTP_FROM=RoadWatch <no-reply@example.com>
+```
+
+Use port `465` with `SMTP_SECURE=true` when required by your provider. Keep
+these credentials private and do not commit them. If SMTP is not configured,
+report status updates still work, but email notifications are not sent. Email
+delivery is attempted for inspector/admin status changes and when a citizen
+reply returns a report to **Under Review**.
 
 MongoDB must be running before the API starts. The backend connects to the
 existing collections and does not drop data. In development, demo users are

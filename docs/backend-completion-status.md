@@ -81,3 +81,40 @@ as the current completion screen permits, or after Ongoing repair work.
 Backend rule tests run with `cd backend; npm test`. Live MongoDB smoke checks
 should use a temporary report and remove it afterward. Sample MongoDB data is
 documented in [database/sample-data.md](database/sample-data.md).
+
+## Additional Software Testing Needed
+
+The current backend tests cover validation and workflow rules, but the system still needs additional testing to verify end-to-end reliability, security, and usability before production release.
+
+| Testing type | Purpose | Main areas to test |
+|---|---|---|
+| Integration testing | Validate that frontend, backend, and MongoDB work together correctly across real workflows | login/register flow, report creation, status transitions, assignment creation, photo uploads, verification lifecycle |
+| End-to-end (E2E) testing | Confirm user journeys work from the browser across multiple pages and roles | Citizen submit report, Field Inspector review, Administrator assignment, close report, photo evidence display |
+| Security testing | Check for authentication, authorization, and data-protection weaknesses | JWT handling, role-based access control, admin-only routes, password hashing, input sanitization, file upload validation |
+| Performance testing | Ensure the API remains responsive under realistic load | report listing, search/filter queries, concurrent login requests, MongoDB query performance, large photo uploads |
+| Usability testing | Validate whether users can complete tasks without confusion | citizen report form, inspector dashboard, admin assignment screens, error messages, mobile responsiveness |
+| Regression testing | Ensure new fixes do not break existing functionality | report workflow rules, assignment logic, approval/rejection decisions, status history logs |
+| Edge-case testing | Look for boundary and failure conditions not covered by unit tests | very long descriptions, invalid coordinates, duplicate case IDs, empty database collections, expired tokens, malformed evidence files |
+| Accessibility testing | Ensure the system is usable by different users and devices | keyboard navigation, color contrast, form labels, screen-reader compatibility |
+| Database/data integrity testing | Verify MongoDB records align with business workflow and are not corrupted | user roles, status_logs, verifications, assignments, report_photos deletion/updates, report closure timestamps |
+| Deployment/compatibility testing | Confirm the application works in the target runtime environment | Node version compatibility, environment variables, CORS configuration, production build and startup behavior |
+
+## Backend Test Cases Executed
+
+| Test case | Expected result | Actual result | Status |
+|---|---|---|---|
+| Mongo _id remains distinct from the public report id | Public report output excludes `_id` and exposes `id`/`createdAt` instead | Report object returned the public `id` and `createdAt` while removing `_id` | Pass |
+| legacy snake_case fields normalize to frontend camelCase | Snake_case fields are converted to camelCase | `report_id` became `reportId` and `changed_at` became `changedAt` | Pass |
+| signed tokens validate until their expiry | Valid signed token is accepted before expiry | Token verified successfully with the expected email claim | Pass |
+| expired and modified tokens are rejected | Expired token and tampered token are rejected | `verifyToken` returned `null` for both invalid tokens | Pass |
+| list query preserves the legacy array response when no options are supplied | No-option query returns the raw array result and `requested: false` | Returned original report list with the legacy format intact | Pass |
+| list query filters, searches, sorts, and paginates | Query applies status filter, text search, `createdAt` sort, and pagination correctly | Only the matching report remained and pagination metadata was correct | Pass |
+| list query rejects invalid pagination and unsupported sort fields | Invalid page value and unsupported sort field trigger validation errors | Validation error messages matched the expected patterns | Pass |
+| registration validates adulthood, contact, and address fields | Valid user passes; invalid email, age, address, and phone fail | Validation accepted the valid user and rejected invalid inputs with matching error text | Pass |
+| report input trims text and rejects non-text fields | Text fields are trimmed and invalid non-string values are rejected | Category, location, and description were normalized while invalid `category` failed | Pass |
+| report input accepts validated image data and rejects mismatched image types | Valid PNG evidence passes; mismatched content type is rejected | Accepted valid PNG evidence and rejected mismatched image metadata | Pass |
+| report input accepts up to five evidence photos and rejects more | Up to five photos are accepted; extra photos are rejected | Exactly five photos passed through, and a sixth was blocked | Pass |
+| priority and status transitions follow the workflow rules | Allowed workflow transitions pass and disallowed ones fail | Workflow logic matched the expected Field Inspector and Administrator rules | Pass |
+| assignments require a report id and valid inspector email | Valid assignment input is sanitized and invalid email is rejected | `reportId` and assigned email were normalized and invalid value was rejected | Pass |
+
+All 13 backend tests currently pass (`npm test` in `backend` completed successfully with 13 passing, 0 failing).

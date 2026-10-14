@@ -1,6 +1,7 @@
 import { useState } from "react";
 import FeedbackMessage from "../../components/FeedbackMessage";
 import EvidencePhoto from "../../components/EvidencePhoto";
+import ReportConversation from "../../components/ReportConversation";
 import ReportTimeline from "../../components/ReportTimeline";
 
 
@@ -262,6 +263,30 @@ export default function InspectorReportDetails({
         </div>
 
       </section>
+
+      {(report.conversation?.length || report.citizenResponse || report.status === "Needs Information") && (
+        <section className="panel conversation-panel">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">REPORT FOLLOW-UP</p>
+              <h2>
+                Conversation with Citizen
+              </h2>
+            </div>
+            <span className={`status status-${report.status.toLowerCase().replaceAll(" ", "-")}`}>
+              {report.status === "Under Review" && report.citizenResponse
+                ? "Citizen Replied"
+                : report.status}
+            </span>
+          </div>
+
+          <ReportConversation
+            messages={report.conversation || []}
+            legacyInspectorNote={report.status === "Needs Information" ? report.verificationNotes : ""}
+            legacyCitizenResponse={report.citizenResponse}
+          />
+        </section>
+      )}
 
       {report.status === "Verified" ? (
         <section className="panel inspection-summary">

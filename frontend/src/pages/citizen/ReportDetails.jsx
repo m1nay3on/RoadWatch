@@ -1,10 +1,17 @@
-﻿import EvidencePhoto from "../../components/EvidencePhoto";
+﻿import { useState } from "react";
+import EvidencePhoto from "../../components/EvidencePhoto";
+import ReportConversation from "../../components/ReportConversation";
 import ReportTimeline from "../../components/ReportTimeline";
 
 export default function ReportDetails({
   setActive,
   report,
+  onResubmitReport,
 }) {
+  const [responseText, setResponseText] = useState("");
+  const [localMessage, setLocalMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
   if (!report) {
     return (
       <main className="main">
@@ -149,6 +156,16 @@ export default function ReportDetails({
 
       </section>
 
+      <section className="panel">
+
+        <h2>Evidence</h2>
+
+        <div className="evidence-placeholder">
+          <EvidencePhoto report={report} />
+        </div>
+
+      </section>
+
       {report.status !== "New" && (
         <section className="panel">
 
@@ -191,15 +208,79 @@ export default function ReportDetails({
         </section>
       )}
 
-      <section className="panel">
+      {(report.conversation?.length || report.status === "Needs Information" || report.citizenResponse) && (
+        <section className="panel conversation-panel">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">REPORT FOLLOW-UP</p>
+              <h2>Conversation with Inspector</h2>
+            </div>
+            <span className={`status status-${report.status.toLowerCase().replaceAll(" ", "-")}`}>
+              {report.status}
+            </span>
+          </div>
 
-        <h2>Evidence</h2>
+          <ReportConversation
+            messages={report.conversation || []}
+            legacyInspectorNote={report.status === "Needs Information" ? report.verificationNotes : ""}
+            legacyCitizenResponse={report.citizenResponse}
+          />
 
-        <div className="evidence-placeholder">
-          <EvidencePhoto report={report} />
-        </div>
+          {report.status === "Needs Information" ? (
+            <div className="form conversation-reply">
+              <label>
+                Your response
+                <textarea
+                  maxLength={2000}
+                  value={responseText}
+                  onChange={(event) => {
+                    setResponseText(event.target.value);
+                    setLocalMessage("");
+                  }}
+                  placeholder="Reply to the inspector's request..."
+                />
+              </label>
 
-      </section>
+              {localMessage && (
+                <p className="feedback-message" aria-live="polite">
+                  {localMessage}
+                </p>
+              )}
+
+              <button
+                className="gold"
+                type="button"
+                disabled={submitting}
+                onClick={async () => {
+                  if (!responseText.trim()) {
+                    setLocalMessage("Please enter the information the inspector requested.");
+                    return;
+                  }
+
+                  setSubmitting(true);
+                  try {
+                    const submitted = await onResubmitReport(report.id, responseText);
+                    if (submitted) {
+                      setResponseText("");
+                      setLocalMessage("Your response was sent to the inspector.");
+                    } else {
+                      setLocalMessage("Your response could not be submitted. Please try again.");
+                    }
+                  } finally {
+                    setSubmitting(false);
+                  }
+                }}
+              >
+                {submitting ? "Sending..." : "Send Response"}
+              </button>
+            </div>
+          ) : (
+            <p className="subtitle conversation-awaiting">
+              Your response has been sent. The inspector will review it and update the report.
+            </p>
+          )}
+        </section>
+      )}
 
       <ReportTimeline report={report} />
 

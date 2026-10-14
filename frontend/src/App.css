@@ -1699,6 +1699,74 @@ button {
   line-height: 1.7;
 }
 
+.conversation-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.conversation-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.conversation-message {
+  max-width: 88%;
+  padding: 13px 15px;
+  border: 1px solid #1D3656;
+  border-radius: 12px;
+  background: #07152B;
+}
+
+.conversation-inspector {
+  align-self: flex-start;
+  border-left: 3px solid #F4A261;
+}
+
+.conversation-citizen {
+  align-self: flex-end;
+  border-right: 3px solid #79D69A;
+  background: rgba(89, 174, 119, 0.08);
+}
+
+.conversation-message-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 7px;
+  color: #F4F7FA;
+  font-size: 12px;
+}
+
+.conversation-message-heading span,
+.conversation-message time {
+  color: #8FA1B7;
+  font-size: 10px;
+}
+
+.conversation-message p {
+  margin: 0;
+  color: #B8C4D2;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.conversation-message time {
+  display: block;
+  margin-top: 8px;
+}
+
+.conversation-reply {
+  width: 100%;
+}
+
+.conversation-awaiting {
+  margin: 0;
+}
+
 .evidence-placeholder {
   min-height: 120px;
 

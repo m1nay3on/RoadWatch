@@ -17,7 +17,7 @@ export default function InspectorDashboard({
     (report) => report.status === "Verified"
   );
   const ongoing = reports.filter(
-    (report) => report.status === "Ongoing"
+    (report) => ["Ongoing", "Endorsed to Engineering Office"].includes(report.status)
   );
   const rejected = reports.filter(
     (report) => report.status === "Rejected"

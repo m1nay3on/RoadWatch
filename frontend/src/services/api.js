@@ -25,4 +25,5 @@ export const api = {
   get: (path) => request(path),
   post: (path, body, authenticated = true) => request(path, { method: "POST", body, authenticated }),
   patch: (path, body) => request(path, { method: "PATCH", body }),
+  delete: (path) => request(path, { method: "DELETE" }),
 };
